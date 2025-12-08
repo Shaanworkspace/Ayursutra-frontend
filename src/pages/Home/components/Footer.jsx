@@ -53,7 +53,7 @@ export default function Footer() {
 function NavLinks() {
     const links = [
         { to: "/", label: "Home" },
-        { to: "/therapists", label: "Therapists" },
+        { to: "/home/therapists", label: "Therapists" },
         { to: "/appointments", label: "Appointments" },
         { to: "/about", label: "About" },
         { to: "/contact", label: "Contact" },
