@@ -10,10 +10,34 @@ const authSlice = createSlice({
         userId:localStorage.getItem('userId') || null
     },
     reducers: {
-        setCredentials: (state,action)=>{
+        setCredentials: (state, action) => {
             
+            // state.user = action.payload.user;
+            // state.token = action.payload.token;
+            // state.userId = action.payload.user.sub;
+
+            const { user, token } = action.payload;
+            
+            // update Redux state
+            state.user = user;
+            state.token = token;
+            state.userId = user?.sub || null;
+
+            // and persist to localStorage
+            localStorage.setItem("user", JSON.stringify(user));
+            localStorage.setItem("token", token);
+            localStorage.setItem("userId", user?.sub || "");
         },
-        logout: ()=>{
+        logout: (state) => {
+            // clear Redux state
+            state.user = null;
+            state.token = null;
+            state.userId = null;
+
+            // clean localStorage
+            localStorage.removeItem("user");
+            localStorage.removeItem("token");
+            localStorage.removeItem("userId");
         },
     },
 })
