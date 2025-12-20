@@ -1,9 +1,11 @@
+// src/routes/AppRoutes.jsx
 import { BrowserRouter, Routes, Route } from "react-router";
 import HomePage from "../pages/Home/HomePage";
 import LoginPage from "@/pages/Auth/LoginPage";
 import SignupPage from "@/pages/Auth/SignupPage";
-import ProtectedRoute from "./ProtectedRoute"; 
 import SelectRole from "@/pages/Auth/SelectRole";
+import ProtectedRoute from "./ProtectedRoute";
+
 import { PatientProfile } from "@/pages/Patients/PatientProfile";
 import { PatientDashboard } from "@/pages/Patients/PatientDashboard";
 import { DoctorProfile } from "@/pages/Doctors/DoctorProfile";
@@ -15,18 +17,19 @@ export default function AppRoutes() {
     return (
         <BrowserRouter>
             <Routes>
-                {/* Public Routes */}
+                {/* Public */}
                 <Route path="/" element={<HomePage />} />
                 <Route path="/login" element={<LoginPage />} />
-                <Route path="/signup" element={<SignupPage />} />
+                {/* User should go here first to choose role */}
                 <Route path="/select-role" element={<SelectRole />} />
+                {/* Signup always expects ?role=... */}
+                <Route path="/signup" element={<SignupPage />} />
 
-
-                {/* Doctor Protected Routes */}
+                {/* Doctor */}
                 <Route
                     path="/doctor/dashboard"
                     element={
-                        <ProtectedRoute>
+                        <ProtectedRoute role="DOCTOR">
                             <DoctorDashboard />
                         </ProtectedRoute>
                     }
@@ -34,17 +37,17 @@ export default function AppRoutes() {
                 <Route
                     path="/doctor/profile"
                     element={
-                        <ProtectedRoute>
+                        <ProtectedRoute role="DOCTOR">
                             <DoctorProfile />
                         </ProtectedRoute>
                     }
                 />
 
-                {/* Patient Protected Routes */}
+                {/* Patient */}
                 <Route
                     path="/patient/dashboard"
                     element={
-                        <ProtectedRoute>
+                        <ProtectedRoute role="PATIENT">
                             <PatientDashboard />
                         </ProtectedRoute>
                     }
@@ -52,17 +55,17 @@ export default function AppRoutes() {
                 <Route
                     path="/patient/profile"
                     element={
-                        <ProtectedRoute>
+                        <ProtectedRoute role="PATIENT">
                             <PatientProfile />
                         </ProtectedRoute>
                     }
                 />
 
-                {/* Therapist Protected Routes */}
+                {/* Therapist */}
                 <Route
                     path="/therapist/dashboard"
                     element={
-                        <ProtectedRoute>
+                        <ProtectedRoute role="THERAPIST">
                             <TherapistDashboard />
                         </ProtectedRoute>
                     }
@@ -70,7 +73,7 @@ export default function AppRoutes() {
                 <Route
                     path="/therapist/profile"
                     element={
-                        <ProtectedRoute>
+                        <ProtectedRoute role="THERAPIST">
                             <TherapistProfile />
                         </ProtectedRoute>
                     }
