@@ -11,7 +11,6 @@ export default function SignupPage() {
     const url = new URL(window.location.href);
     const [fName, setFName] = useState("");
     const [lName, setLName] = useState("");
-    const [phone, setPhone] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
@@ -34,8 +33,8 @@ export default function SignupPage() {
 
     const handleSignUp = async () => {
         const SignUpRequest = {
-            name: `${fName} ${lName}`.trim(),
-            phone,
+            firstName: fName,
+            lastName: lName,
             email,
             password,
             role,
@@ -48,10 +47,20 @@ export default function SignupPage() {
         };
         try {
             const res = await axios.post(
-                `${baseApi}/user/register`,
+                `${baseApi}/api/user/register`,
                 SignUpRequest,
                 config
             );
+            const status = res.status;
+            console.log(res.status);
+            if (status == 201) {
+                toast.success(
+                    "Account Created Successfully !! Navigating to Login Page"
+                );
+                setTimeout(() => {
+                    navigate("/login");
+                }, 2000);
+            }
         } catch (error) {
             if (error.code === "ECONNABORTED") {
                 console.log("Render is taking time to wake up ! Please Retry");
@@ -106,16 +115,6 @@ export default function SignupPage() {
                         placeholder="Email address*"
                         className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-300 rounded-xl"
                     />
-
-                    {/* Phone */}
-                    <input
-                        type="tel"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                        placeholder="Phone"
-                        className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-300 rounded-xl"
-                    />
-
                     {/* Passwords */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="relative">

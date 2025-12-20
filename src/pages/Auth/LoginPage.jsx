@@ -36,7 +36,7 @@ export default function LoginPage() {
         };
         try {
             const res = await axios.post(
-                `${baseApi}/user/login`,
+                `${baseApi}/api/user/login`,
                 loginObject,
                 config
             );
