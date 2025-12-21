@@ -25,6 +25,7 @@ export default function SignupPage() {
     const [confirmPassword, setConfirmPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [showCPassword, setShowCPassword] = useState(false);
+    const [showLoadingPopup, setShowLoadingPopup] = useState(false);
 
     const role = url.searchParams.get("role");
     const baseApi = import.meta.env.VITE_API_GATEWAY_BASE_URL;
@@ -81,28 +82,44 @@ export default function SignupPage() {
             role,
         };
 
-        const toastId = toast.loading("Creating your account...");
+        setShowLoadingPopup(true);
 
         try {
             await axios.post(`${baseApi}/api/user/register`, signUpRequest, {
                 timeout: 120000,
             });
 
-            toast.success("Account created successfully", { id: toastId });
+            setShowLoadingPopup(false);
+            toast.success("Account created successfully");
             setTimeout(() => navigate("/login"), 2000);
         } catch (error) {
+            setShowLoadingPopup(false);
+
             if (error.code === "ECONNABORTED") {
-                toast.error("Server waking up. Please retry.", { id: toastId });
+                toast.error("Server waking up. Please retry.");
             } else if (error.response) {
-                toast.error(error.response.data.message, { id: toastId });
+                toast.error(error.response.data.message);
             } else {
-                toast.error("Network error", { id: toastId });
+                toast.error("Network error");
             }
         }
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-black p-4">
+        <div className="min-h-screen flex items-center justify-center bg-black p-4 relative">
+            {/* FLOATING LOADING POPUP */}
+            {showLoadingPopup && (
+                <div className="fixed top-6 right-6 z-50">
+                    <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-900 border border-gray-700 shadow-xl">
+                        <div className="w-4 h-4 rounded-full border-2 border-cyan-500 border-t-transparent animate-spin" />
+                        <p className="text-sm text-gray-300">
+                            Render (free-tier) takes time to wake server, please
+                            wait…
+                        </p>
+                    </div>
+                </div>
+            )}
+
             <div className="w-full max-w-md">
                 <div className="bg-gray-900 border border-gray-800 rounded-3xl p-8 shadow-2xl">
                     <div className="text-center mb-6">
@@ -117,34 +134,19 @@ export default function SignupPage() {
                         </p>
                     </div>
 
-                    <div className="space-y-2 mb-6">
-                        <button className="w-full flex items-center justify-center gap-2 rounded-xl border border-gray-700 py-2.5 text-sm text-gray-300 hover:border-gray-500 hover:bg-gray-800 transition">
-                            <Chrome className="w-4 h-4" /> Continue with Google
-                        </button>
-                        <button className="w-full flex items-center justify-center gap-2 rounded-xl border border-gray-700 py-2.5 text-sm text-gray-300 hover:border-gray-500 hover:bg-gray-800 transition">
-                            <Github className="w-4 h-4" /> Continue with GitHub
-                        </button>
-                    </div>
-
-                    <div className="flex items-center gap-3 mb-6">
-                        <div className="flex-1 h-px bg-gray-700" />
-                        <span className="text-xs text-gray-500">OR</span>
-                        <div className="flex-1 h-px bg-gray-700" />
-                    </div>
-
                     <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-3">
                             <input
                                 value={fName}
                                 onChange={(e) => setFName(e.target.value)}
                                 placeholder="First name"
-                                className="rounded-xl bg-gray-800 border border-gray-700 px-3 py-2.5 text-sm text-white placeholder-gray-400 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none"
+                                className="rounded-xl bg-gray-800 border border-gray-700 px-3 py-2.5 text-sm text-white"
                             />
                             <input
                                 value={lName}
                                 onChange={(e) => setLName(e.target.value)}
                                 placeholder="Last name"
-                                className="rounded-xl bg-gray-800 border border-gray-700 px-3 py-2.5 text-sm text-white placeholder-gray-400 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none"
+                                className="rounded-xl bg-gray-800 border border-gray-700 px-3 py-2.5 text-sm text-white"
                             />
                         </div>
 
@@ -154,7 +156,7 @@ export default function SignupPage() {
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 placeholder="Email address"
-                                className="w-full pl-10 pr-3 py-2.5 rounded-xl bg-gray-800 border border-gray-700 text-sm text-white placeholder-gray-400 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none"
+                                className="w-full pl-10 py-2.5 rounded-xl bg-gray-800 border border-gray-700 text-sm text-white"
                             />
                         </div>
 
@@ -165,12 +167,12 @@ export default function SignupPage() {
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 placeholder="Password"
-                                className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-gray-800 border border-gray-700 text-sm text-white placeholder-gray-400 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none"
+                                className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-gray-800 border border-gray-700 text-sm text-white"
                             />
                             <button
                                 type="button"
                                 onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-cyan-400 transition"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
                             >
                                 {showPassword ? (
                                     <EyeOff className="w-4 h-4" />
@@ -189,16 +191,16 @@ export default function SignupPage() {
                                     setConfirmPassword(e.target.value)
                                 }
                                 placeholder="Confirm Password"
-                                className={`w-full pl-10 pr-10 py-2.5 rounded-xl bg-gray-800 text-sm text-white placeholder-gray-400 outline-none transition ${
+                                className={`w-full pl-10 pr-10 py-2.5 rounded-xl bg-gray-800 text-sm text-white ${
                                     passwordsMismatch
-                                        ? "border border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500"
-                                        : "border border-gray-700 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
+                                        ? "border border-red-500"
+                                        : "border border-gray-700"
                                 }`}
                             />
                             <button
                                 type="button"
                                 onClick={() => setShowCPassword(!showCPassword)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-cyan-400 transition"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
                             >
                                 {showCPassword ? (
                                     <EyeOff className="w-4 h-4" />
@@ -211,7 +213,7 @@ export default function SignupPage() {
                         <button
                             disabled={passwordsMismatch}
                             onClick={handleSignUp}
-                            className="w-full flex items-center justify-center gap-2 rounded-xl py-2.5 bg-gradient-to-r from-cyan-600 to-teal-600 text-white font-semibold shadow-lg hover:from-cyan-500 hover:to-teal-500 transition disabled:opacity-50"
+                            className="w-full flex items-center justify-center gap-2 rounded-xl py-2.5 bg-gradient-to-r from-cyan-600 to-teal-600 text-white font-semibold disabled:opacity-50"
                         >
                             Create Account
                             <ArrowRight className="w-4 h-4" />

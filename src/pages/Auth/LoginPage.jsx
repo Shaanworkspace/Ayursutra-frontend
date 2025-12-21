@@ -12,6 +12,8 @@ export default function LoginPage() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
+    const [servicesLoading, setServicesLoading] = useState(true);
+    const [showLoadingPopup, setShowLoadingPopup] = useState(true);
 
     const navigate = useNavigate();
     const dispatch = useDispatch();
@@ -19,8 +21,6 @@ export default function LoginPage() {
 
     useEffect(() => {
         let cancelled = false;
-
-        const toastId = toast.info("Render (free-tier): Starting services...");
 
         const warmupAll = async () => {
             try {
@@ -31,23 +31,29 @@ export default function LoginPage() {
                 ]);
 
                 if (!cancelled) {
-                    toast.success("All services are ready", { id: toastId });
+                    setServicesLoading(false);
+                    setShowLoadingPopup(false);
+                    toast.success("Services started successfully");
                 }
-            } catch (err) {
+            } catch {
                 if (!cancelled) {
-                    toast.error("Failed to wake services", { id: toastId });
+                    setServicesLoading(false);
+                    setShowLoadingPopup(false);
+                    toast.error("Failed to start services");
                 }
             }
         };
 
         warmupAll();
-
-        return () => {
-            cancelled = true;
-        };
+        return () => (cancelled = true);
     }, []);
 
     const handleLogin = async () => {
+        if (servicesLoading) {
+            setShowLoadingPopup(true);
+            return;
+        }
+
         try {
             const res = await axios.post(
                 `${baseApi}/api/user/login`,
@@ -70,14 +76,24 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-gray-900 to-gray-800 p-4">
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-gray-900 to-gray-800 p-4 relative">
+            {/* FLOATING LOADING POPUP */}
+            {showLoadingPopup && servicesLoading && (
+                <div className="fixed top-6 right-6 z-50">
+                    <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-900 border border-gray-700 shadow-xl">
+                        <div className="w-4 h-4 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" />
+                        <p className="text-sm text-gray-300">
+                            Render (free-tier) takes time to wake server, please
+                            wait…
+                        </p>
+                    </div>
+                </div>
+            )}
+
+            {/* LOGIN CARD */}
             <div className="w-full max-w-md bg-gray-900 rounded-3xl shadow-2xl p-8 text-gray-100">
-                {/* Header */}
                 <div className="text-center mb-6">
-                    <div
-                        className="w-12 h-12 mx-auto mb-3 flex items-center justify-center rounded-xl
-                        bg-gradient-to-br from-indigo-600 to-purple-600 shadow-lg"
-                    >
+                    <div className="w-12 h-12 mx-auto mb-3 flex items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 shadow-lg">
                         <Lock className="w-6 h-6 text-white" />
                     </div>
                     <h1 className="text-2xl font-bold text-indigo-400">
@@ -86,26 +102,21 @@ export default function LoginPage() {
                     <p className="text-xs text-gray-500">Welcome back</p>
                 </div>
 
-                {/* Form */}
                 <div className="space-y-4">
-                    {/* Email */}
                     <div>
                         <label className="text-xs text-gray-400">Email</label>
                         <div className="relative">
                             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                             <input
-                                placeholder="Email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                className="w-full pl-10 pr-3 py-2.5 text-sm rounded-xl
-                                bg-gray-800 border border-gray-700
-                                focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500
-                                hover:border-gray-500 transition"
+                                disabled={servicesLoading}
+                                className="w-full pl-10 pr-3 py-2.5 text-sm rounded-xl bg-gray-800 border border-gray-700 focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+                                placeholder="Email"
                             />
                         </div>
                     </div>
 
-                    {/* Password */}
                     <div>
                         <label className="text-xs text-gray-400">
                             Password
@@ -113,20 +124,18 @@ export default function LoginPage() {
                         <div className="relative">
                             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                             <input
-                                placeholder="Enter Password"
                                 type={showPassword ? "text" : "password"}
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                className="w-full pl-10 pr-10 py-2.5 text-sm rounded-xl
-                                bg-gray-800 border border-gray-700
-                                focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500
-                                hover:border-gray-500 transition"
+                                disabled={servicesLoading}
+                                className="w-full pl-10 pr-10 py-2.5 text-sm rounded-xl bg-gray-800 border border-gray-700 focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+                                placeholder="Enter password"
                             />
                             <button
                                 type="button"
                                 onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2
-                                text-gray-400 hover:text-indigo-400 transition"
+                                disabled={servicesLoading}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
                             >
                                 {showPassword ? (
                                     <EyeOff className="w-4 h-4" />
@@ -137,27 +146,20 @@ export default function LoginPage() {
                         </div>
                     </div>
 
-                    {/* Submit */}
                     <button
                         onClick={handleLogin}
-                        className="w-full flex items-center justify-center gap-2 py-2.5
-                        bg-gradient-to-r from-indigo-600 to-purple-600
-                        text-white font-semibold rounded-xl shadow-lg
-                        hover:from-indigo-500 hover:to-purple-500
-                        hover:-translate-y-[1px] hover:shadow-xl
-                        active:translate-y-0 transition"
+                        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold shadow-lg hover:from-indigo-500 hover:to-purple-500 transition"
                     >
                         Log In
                         <ArrowRight className="w-4 h-4" />
                     </button>
                 </div>
 
-                {/* Footer */}
                 <p className="text-center text-xs text-gray-500 mt-6">
                     Don’t have an account?{" "}
                     <a
                         href="/select-role"
-                        className="text-indigo-400 font-semibold hover:text-indigo-300 hover:underline transition"
+                        className="text-indigo-400 font-semibold hover:underline"
                     >
                         Create one
                     </a>

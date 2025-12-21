@@ -23,7 +23,7 @@ export function warmupService({
     const poll = async () => {
         try {
             // ANY 200 response = service is UP
-            await axios.get(url, { timeout: 4000 });
+            await axios.get(url, { timeout: 6000 });
 
             stop();
             toast.success(`${label} service is ready`, { id: toastId });
