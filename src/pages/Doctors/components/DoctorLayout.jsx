@@ -5,8 +5,8 @@ export const DoctorLayout = ({ children }) => {
     return (
         <div className="min-h-screen flex flex-col bg-gradient-to-br from-cyan-50/60 to-teal-100/50 dark:from-gray-900 dark:to-gray-800">
             <DoctorNavbar />
-            <main className="flex-1 pt-20">{children}</main>
-            <Footer/>
+            <main>{children}</main>
+            <Footer />
         </div>
     );
 };

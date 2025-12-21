@@ -6,12 +6,12 @@ import SignupPage from "@/pages/Auth/SignupPage";
 import SelectRole from "@/pages/Auth/SelectRole";
 import ProtectedRoute from "./ProtectedRoute";
 
-import { PatientProfile } from "@/pages/Patients/PatientProfile";
-import { PatientDashboard } from "@/pages/Patients/PatientDashboard";
-import { DoctorProfile } from "@/pages/Doctors/DoctorProfile";
-import { DoctorDashboard } from "@/pages/Doctors/DoctorDashboard";
-import { TherapistDashboard } from "@/pages/Therapists/TherapistDashboard";
-import { TherapistProfile } from "@/pages/Therapists/TherapistProfile";
+import PatientProfile from "@/pages/Patients/PatientProfile";
+import PatientDashboard from "@/pages/Patients/PatientDashboard";
+import DoctorProfile from "@/pages/Doctors/DoctorProfile";
+import DoctorDashboard from "@/pages/Doctors/DoctorDashboard";
+import TherapistDashboard from "@/pages/Therapists/TherapistDashboard";
+import TherapistProfile from "@/pages/Therapists/TherapistProfile";
 
 export default function AppRoutes() {
     return (
