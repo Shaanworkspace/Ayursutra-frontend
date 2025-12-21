@@ -23,17 +23,11 @@ export default function HomePage() {
     useEffect(() => {
         let cancelled = false;
 
-        const toastId = toast.loading("Starting services… (Render free tier)");
-
         const warmupAll = async () => {
             await Promise.all([
                 warmupSilent({ url: `${baseApi}/api/user/health` }),
                 warmupSilent({ url: `${baseApi}/api/health` }),
             ]);
-
-            if (!cancelled) {
-                toast.success("Services ready", { id: toastId });
-            }
         };
 
         warmupAll();

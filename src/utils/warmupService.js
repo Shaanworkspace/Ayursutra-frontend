@@ -7,7 +7,7 @@ export function warmupService({
     timeout = 120000, // max wait: 2 minutes
     interval = 5000, // poll every 5 seconds
 }) {
-    const toastId = toast.loading(`Starting ${label} service...`);
+    const toastId = toast.info(`Starting ${label} service...`);
 
     let stopped = false;
     let intervalId;

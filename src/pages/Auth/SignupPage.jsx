@@ -9,8 +9,6 @@ import {
     ArrowRight,
     Github,
     Chrome,
-    Sun,
-    Moon,
 } from "lucide-react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
@@ -26,7 +24,7 @@ export default function SignupPage() {
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
-    const [isDark, setIsDark] = useState(false);
+    const [showCPassword, setShowCPassword] = useState(false);
 
     const role = url.searchParams.get("role");
     const baseApi = import.meta.env.VITE_API_GATEWAY_BASE_URL;
@@ -36,12 +34,45 @@ export default function SignupPage() {
 
     useEffect(() => {
         if (!role) {
-            toast.info("Select Role Please");
+            toast.info("Please select a role first");
             setTimeout(() => navigate("/select-role"), 2000);
         }
     }, [role]);
 
+    const validateForm = () => {
+        if (
+            !fName.trim() ||
+            !lName.trim() ||
+            !email.trim() ||
+            !password.trim() ||
+            !confirmPassword.trim()
+        ) {
+            toast.error("Please fill in all fields.");
+            return false;
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            toast.error("Please enter a valid email address.");
+            return false;
+        }
+
+        if (password.length < 8) {
+            toast.error("Password must be at least 8 characters long.");
+            return false;
+        }
+
+        if (password !== confirmPassword) {
+            toast.error("Passwords do not match.");
+            return false;
+        }
+
+        return true;
+    };
+
     const handleSignUp = async () => {
+        if (!validateForm()) return;
+
         const signUpRequest = {
             firstName: fName,
             lastName: lName,
@@ -50,31 +81,18 @@ export default function SignupPage() {
             role,
         };
 
-        const toastId = toast.loading("Sending request to server...");
-
-        const coldStartTimer = setTimeout(() => {
-            toast.loading(
-                "Server is waking up (Render free-tier). Please wait...",
-                { id: toastId }
-            );
-        }, 6000);
+        const toastId = toast.loading("Creating your account...");
 
         try {
             await axios.post(`${baseApi}/api/user/register`, signUpRequest, {
                 timeout: 120000,
             });
 
-            clearTimeout(coldStartTimer);
-            toast.success("Account created successfully!", { id: toastId });
-
+            toast.success("Account created successfully", { id: toastId });
             setTimeout(() => navigate("/login"), 2000);
         } catch (error) {
-            clearTimeout(coldStartTimer);
-
             if (error.code === "ECONNABORTED") {
-                toast.error("Server still waking up. Try again.", {
-                    id: toastId,
-                });
+                toast.error("Server waking up. Please retry.", { id: toastId });
             } else if (error.response) {
                 toast.error(error.response.data.message, { id: toastId });
             } else {
@@ -84,77 +102,49 @@ export default function SignupPage() {
     };
 
     return (
-        <div
-            className={`min-h-screen flex items-center justify-center p-4
-            ${
-                isDark
-                    ? "bg-gradient-to-br from-gray-900 via-gray-800 to-black"
-                    : "bg-gradient-to-br from-cyan-50 via-teal-50 to-emerald-50"
-            }`}
-        >
+        <div className="min-h-screen flex items-center justify-center bg-black p-4">
             <div className="w-full max-w-md">
-                <div
-                    className={`rounded-3xl p-6 sm:p-8 shadow-2xl transition-all
-                    ${
-                        isDark
-                            ? "bg-gray-900 text-gray-100"
-                            : "bg-white text-gray-900"
-                    }`}
-                >
-                    {/* Theme toggle */}
-                    <button
-                        onClick={() => setIsDark(!isDark)}
-                        className="absolute -top-10 right-2 p-2 rounded-full
-                        bg-white/80 dark:bg-gray-800 shadow hover:scale-110 transition"
-                    >
-                        {isDark ? (
-                            <Sun className="w-5 h-5 text-yellow-400" />
-                        ) : (
-                            <Moon className="w-5 h-5 text-gray-800" />
-                        )}
-                    </button>
-
-                    {/* Header */}
+                <div className="bg-gray-900 border border-gray-800 rounded-3xl p-8 shadow-2xl">
                     <div className="text-center mb-6">
-                        <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-3 bg-gradient-to-br from-cyan-500 to-teal-600">
-                            <User className="w-6 h-6 text-white" />
+                        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-600 to-teal-600">
+                            <User className="h-6 w-6 text-white" />
                         </div>
-                        <h1 className="text-2xl font-bold text-cyan-600">
+                        <h1 className="text-2xl font-semibold text-white">
                             Create Account
                         </h1>
-                        <p className="text-xs text-gray-500">Join Ayursutra</p>
+                        <p className="text-sm text-gray-400 mt-1">
+                            Join Ayursutra securely
+                        </p>
                     </div>
 
-                    {/* Social */}
-                    <div className="space-y-2 mb-5">
-                        <button className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border rounded-xl hover:bg-gray-600 dark:hover:bg-gray-800 transition">
-                            <Chrome className="w-4 h-4" /> Google
+                    <div className="space-y-2 mb-6">
+                        <button className="w-full flex items-center justify-center gap-2 rounded-xl border border-gray-700 py-2.5 text-sm text-gray-300 hover:border-gray-500 hover:bg-gray-800 transition">
+                            <Chrome className="w-4 h-4" /> Continue with Google
                         </button>
-                        <button className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border rounded-xl hover:bg-gray-600 dark:hover:bg-gray-800 transition">
-                            <Github className="w-4 h-4" /> GitHub
+                        <button className="w-full flex items-center justify-center gap-2 rounded-xl border border-gray-700 py-2.5 text-sm text-gray-300 hover:border-gray-500 hover:bg-gray-800 transition">
+                            <Github className="w-4 h-4" /> Continue with GitHub
                         </button>
                     </div>
 
-                    <div className="flex items-center gap-3 mb-5">
-                        <div className="flex-1 h-px bg-gray-300" />
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="flex-1 h-px bg-gray-700" />
                         <span className="text-xs text-gray-500">OR</span>
-                        <div className="flex-1 h-px bg-gray-300" />
+                        <div className="flex-1 h-px bg-gray-700" />
                     </div>
 
-                    {/* Form */}
                     <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-3">
                             <input
                                 value={fName}
                                 onChange={(e) => setFName(e.target.value)}
                                 placeholder="First name"
-                                className="px-3 py-2.5 rounded-xl border text-sm bg-gray-50 dark:bg-gray-800"
+                                className="rounded-xl bg-gray-800 border border-gray-700 px-3 py-2.5 text-sm text-white placeholder-gray-400 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none"
                             />
                             <input
                                 value={lName}
                                 onChange={(e) => setLName(e.target.value)}
                                 placeholder="Last name"
-                                className="px-3 py-2.5 rounded-xl border text-sm bg-gray-50 dark:bg-gray-800"
+                                className="rounded-xl bg-gray-800 border border-gray-700 px-3 py-2.5 text-sm text-white placeholder-gray-400 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none"
                             />
                         </div>
 
@@ -163,8 +153,8 @@ export default function SignupPage() {
                             <input
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                placeholder="Email"
-                                className="w-full pl-10 pr-3 py-2.5 rounded-xl border text-sm bg-gray-50 dark:bg-gray-800"
+                                placeholder="Email address"
+                                className="w-full pl-10 pr-3 py-2.5 rounded-xl bg-gray-800 border border-gray-700 text-sm text-white placeholder-gray-400 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none"
                             />
                         </div>
 
@@ -175,12 +165,12 @@ export default function SignupPage() {
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 placeholder="Password"
-                                className="w-full pl-10 pr-10 py-2.5 rounded-xl border text-sm bg-gray-50 dark:bg-gray-800"
+                                className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-gray-800 border border-gray-700 text-sm text-white placeholder-gray-400 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none"
                             />
                             <button
-                                onClick={() => setShowPassword(!showPassword)}
                                 type="button"
-                                className="absolute right-3 top-1/2 -translate-y-1/2"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-cyan-400 transition"
                             >
                                 {showPassword ? (
                                     <EyeOff className="w-4 h-4" />
@@ -190,37 +180,49 @@ export default function SignupPage() {
                             </button>
                         </div>
 
-                        <input
-                            type="password"
-                            value={confirmPassword}
-                            onChange={(e) => setConfirmPassword(e.target.value)}
-                            placeholder="Confirm password"
-                            className="w-full px-3 py-2.5 rounded-xl border text-sm bg-gray-50 dark:bg-gray-800"
-                        />
-
-                        {passwordsMismatch && (
-                            <p className="text-xs text-red-500">
-                                Passwords do not match
-                            </p>
-                        )}
+                        <div className="relative">
+                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <input
+                                type={showCPassword ? "text" : "password"}
+                                value={confirmPassword}
+                                onChange={(e) =>
+                                    setConfirmPassword(e.target.value)
+                                }
+                                placeholder="Confirm Password"
+                                className={`w-full pl-10 pr-10 py-2.5 rounded-xl bg-gray-800 text-sm text-white placeholder-gray-400 outline-none transition ${
+                                    passwordsMismatch
+                                        ? "border border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                                        : "border border-gray-700 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
+                                }`}
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowCPassword(!showCPassword)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-cyan-400 transition"
+                            >
+                                {showCPassword ? (
+                                    <EyeOff className="w-4 h-4" />
+                                ) : (
+                                    <Eye className="w-4 h-4" />
+                                )}
+                            </button>
+                        </div>
 
                         <button
                             disabled={passwordsMismatch}
                             onClick={handleSignUp}
-                            className="w-full flex items-center justify-center gap-2 px-4 py-2.5
-                            bg-gradient-to-r from-cyan-600 to-teal-600 text-white
-                            font-semibold rounded-xl shadow-lg"
+                            className="w-full flex items-center justify-center gap-2 rounded-xl py-2.5 bg-gradient-to-r from-cyan-600 to-teal-600 text-white font-semibold shadow-lg hover:from-cyan-500 hover:to-teal-500 transition disabled:opacity-50"
                         >
                             Create Account
                             <ArrowRight className="w-4 h-4" />
                         </button>
                     </div>
 
-                    <p className="text-center text-xs text-gray-500 mt-5">
+                    <p className="mt-6 text-center text-xs text-gray-400">
                         Already have an account?{" "}
                         <a
                             href="/login"
-                            className="font-semibold text-cyan-600 hover:underline"
+                            className="text-cyan-400 hover:underline"
                         >
                             Sign in
                         </a>
