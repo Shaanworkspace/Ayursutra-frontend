@@ -16,14 +16,31 @@ import Footer from "./components/Footer";
 import axios from "@/lib/axios";
 import { toast } from "sonner";
 import { warmupService } from "@/utils/warmupService";
+import { warmupSilent } from "@/utils/warmupSilent";
 
 export default function HomePage() {
     const baseApi = import.meta.env.VITE_API_GATEWAY_BASE_URL;
     useEffect(() => {
-        warmupService({
-            url: `${baseApi}/api/user/health`,
-            label: "User",
-        });
+        let cancelled = false;
+
+        const toastId = toast.loading("Starting services… (Render free tier)");
+
+        const warmupAll = async () => {
+            await Promise.all([
+                warmupSilent({ url: `${baseApi}/api/user/health` }),
+                warmupSilent({ url: `${baseApi}/api/health` }),
+            ]);
+
+            if (!cancelled) {
+                toast.success("Services ready", { id: toastId });
+            }
+        };
+
+        warmupAll();
+
+        return () => {
+            cancelled = true;
+        };
     }, []);
 
     return (
