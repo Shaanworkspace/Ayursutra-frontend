@@ -103,6 +103,7 @@ export default function LoginPage() {
                 </div>
 
                 <div className="space-y-4">
+                    {/* Email */}
                     <div>
                         <label className="text-xs text-gray-400">Email</label>
                         <div className="relative">
@@ -110,13 +111,13 @@ export default function LoginPage() {
                             <input
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                disabled={servicesLoading}
-                                className="w-full pl-10 pr-3 py-2.5 text-sm rounded-xl bg-gray-800 border border-gray-700 focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
                                 placeholder="Email"
+                                className="w-full pl-10 pr-3 py-2.5 text-sm rounded-xl bg-gray-800 border border-gray-700 focus:ring-2 focus:ring-indigo-500"
                             />
                         </div>
                     </div>
 
+                    {/* Password */}
                     <div>
                         <label className="text-xs text-gray-400">
                             Password
@@ -127,15 +128,13 @@ export default function LoginPage() {
                                 type={showPassword ? "text" : "password"}
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                disabled={servicesLoading}
-                                className="w-full pl-10 pr-10 py-2.5 text-sm rounded-xl bg-gray-800 border border-gray-700 focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
                                 placeholder="Enter password"
+                                className="w-full pl-10 pr-10 py-2.5 text-sm rounded-xl bg-gray-800 border border-gray-700 focus:ring-2 focus:ring-indigo-500"
                             />
                             <button
                                 type="button"
                                 onClick={() => setShowPassword(!showPassword)}
-                                disabled={servicesLoading}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-indigo-400"
                             >
                                 {showPassword ? (
                                     <EyeOff className="w-4 h-4" />
@@ -146,6 +145,7 @@ export default function LoginPage() {
                         </div>
                     </div>
 
+                    {/* Login Button */}
                     <button
                         onClick={handleLogin}
                         className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold shadow-lg hover:from-indigo-500 hover:to-purple-500 transition"
