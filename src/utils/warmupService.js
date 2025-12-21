@@ -1,44 +1,48 @@
 import axios from "@/lib/axios";
 import { toast } from "sonner";
 
-export async function warmupService({
+export function warmupService({
     url,
     label,
-    timeout = 120000,
-    interval = 6000,
+    timeout = 120000, // max wait: 2 minutes
+    interval = 5000, // poll every 5 seconds
 }) {
-    const toastId = toast.loading(`Starting ${label} service…`);
+    const toastId = toast.loading(`Starting ${label} service...`);
 
-    let isUp = false;
+    let stopped = false;
+    let intervalId;
+    let timeoutId;
 
-    return new Promise((resolve, reject) => {
-        const poll = async () => {
-            try {
-                await axios.get(url, { timeout: 5000 });
-                if (!isUp) {
-                    isUp = true;
-                    toast.success(`${label} service is ready`, { id: toastId });
-                    clearInterval(intervalId);
-                    clearTimeout(timeoutId);
-                    resolve(true);
-                }
-            } catch {
-                // silently wait
-            }
-        };
+    const stop = () => {
+        if (stopped) return;
+        stopped = true;
+        clearInterval(intervalId);
+        clearTimeout(timeoutId);
+    };
 
-        const intervalId = setInterval(poll, interval);
+    const poll = async () => {
+        try {
+            // ANY 200 response = service is UP
+            await axios.get(url, { timeout: 4000 });
 
-        const timeoutId = setTimeout(() => {
-            if (!isUp) {
-                toast.error(`${label} service is taking too long`, {
-                    id: toastId,
-                });
-                clearInterval(intervalId);
-                reject(false);
-            }
-        }, timeout);
+            stop();
+            toast.success(`${label} service is ready`, { id: toastId });
+        } catch {
+            // service still waking up → keep polling silently
+        }
+    };
 
-        poll();
-    });
+    // start polling
+    intervalId = setInterval(poll, interval);
+
+    // hard stop after timeout
+    timeoutId = setTimeout(() => {
+        stop();
+        toast.error(`${label} service is taking too long`, {
+            id: toastId,
+        });
+    }, timeout);
+
+    // fire immediately (important)
+    poll();
 }

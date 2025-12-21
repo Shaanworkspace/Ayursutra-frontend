@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router";
 import { useDispatch } from "react-redux";
 import { setCredentials } from "@/Store/Slices/authSlice";
-import { warmupService } from "@/utils/warmupService";
+import { warmupSilent } from "@/utils/warmupSilent";
 
 export default function LoginPage() {
     const [email, setEmail] = useState("");
@@ -25,28 +25,30 @@ export default function LoginPage() {
 
     const baseApi = import.meta.env.VITE_API_GATEWAY_BASE_URL;
     useEffect(() => {
+        let cancelled = false;
+
+        const toastId = toast.loading(
+            "Services… May take a minute (free tier) Render"
+        );
+
         const warmupAll = async () => {
             await Promise.allSettled([
-                warmupService({
-                    url: `${baseApi}/api/user/health`,
-                    label: "User",
-                }),
-                warmupService({
-                    url: `${baseApi}/api/patients/health`,
-                    label: "Patient",
-                }),
-                warmupService({
-                    url: `${baseApi}/api/doctors/health`,
-                    label: "Doctor",
-                }),
-                warmupService({
-                    url: `${baseApi}/api/therapists/health`,
-                    label: "Therapist",
-                }),
+                warmupSilent({ url: `${baseApi}/api/user/health` }),
+                warmupSilent({ url: `${baseApi}/api/patients/health` }),
+                warmupSilent({ url: `${baseApi}/api/doctors/health` }),
+                warmupSilent({ url: `${baseApi}/api/therapists/health` }),
             ]);
+
+            if (!cancelled) {
+                toast.success("All services are ready", { id: toastId });
+            }
         };
 
         warmupAll();
+
+        return () => {
+            cancelled = true;
+        };
     }, []);
 
     const handleLogin = async () => {

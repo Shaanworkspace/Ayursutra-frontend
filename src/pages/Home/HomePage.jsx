@@ -15,56 +15,15 @@ import Navbar from "@/pages/Home/components/navbar";
 import Footer from "./components/Footer";
 import axios from "@/lib/axios";
 import { toast } from "sonner";
+import { warmupService } from "@/utils/warmupService";
 
 export default function HomePage() {
     const baseApi = import.meta.env.VITE_API_GATEWAY_BASE_URL;
     useEffect(() => {
-        let intervalId;
-        let timeoutId;
-        let isServerUp = false;
-
-        const toastId = toast.loading(
-            "Starting server… this may take up to 1 or 2 minutes (free tier) Render"
-        );
-
-        const checkServer = async () => {
-            try {
-                await axios.get(`${baseApi}/api/user/health`, {
-                    timeout: 5000,
-                });
-
-                if (!isServerUp) {
-                    isServerUp = true;
-                    toast.success("Server is ready Now", { id: toastId });
-                    clearInterval(intervalId);
-                    clearTimeout(timeoutId);
-                }
-            } catch (err) {
-                // silently ignore while server is booting
-            }
-        };
-
-        // Poll every 6 seconds
-        intervalId = setInterval(checkServer, 6000);
-
-        // Hard stop after 2 minutes
-        timeoutId = setTimeout(() => {
-            if (!isServerUp) {
-                toast.error(
-                    "Server is taking longer than expected. Please try again shortly.",
-                    { id: toastId }
-                );
-                clearInterval(intervalId);
-            }
-        }, 120000);
-
-        // Start immediately
-        checkServer();
-
-        return () => {
-            clearInterval(intervalId);
-            clearTimeout(timeoutId);
-        };
+        warmupService({
+            url: `${baseApi}/api/user/health`,
+            label: "User",
+        });
     }, []);
 
     return (
