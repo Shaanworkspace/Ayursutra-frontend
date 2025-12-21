@@ -1,6 +1,6 @@
 /* eslint-disable no-unused-vars */
 // src/pages/Auth/LoginPage.jsx
-import React, { use, useState } from "react";
+import React, { use, useEffect, useState } from "react";
 import {
     Eye,
     EyeOff,
@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router";
 import { useDispatch } from "react-redux";
 import { setCredentials } from "@/Store/Slices/authSlice";
+import { warmupService } from "@/utils/warmupService";
 
 export default function LoginPage() {
     const [email, setEmail] = useState("");
@@ -23,6 +24,31 @@ export default function LoginPage() {
     const dispatcher = useDispatch();
 
     const baseApi = import.meta.env.VITE_API_GATEWAY_BASE_URL;
+    useEffect(() => {
+        const warmupAll = async () => {
+            await Promise.allSettled([
+                warmupService({
+                    url: `${baseApi}/api/user/health`,
+                    label: "User",
+                }),
+                warmupService({
+                    url: `${baseApi}/api/patients/health`,
+                    label: "Patient",
+                }),
+                warmupService({
+                    url: `${baseApi}/api/doctors/health`,
+                    label: "Doctor",
+                }),
+                warmupService({
+                    url: `${baseApi}/api/therapists/health`,
+                    label: "Therapist",
+                }),
+            ]);
+        };
+
+        warmupAll();
+    }, []);
+
     const handleLogin = async () => {
         const loginObject = {
             email: email,

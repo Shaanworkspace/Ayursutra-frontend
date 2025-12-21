@@ -11,14 +11,41 @@ import {
     ArrowRight,
 } from "lucide-react";
 import { useNavigate } from "react-router";
+import { warmupService } from "@/utils/warmupService";
+import { toast } from "sonner";
 
 export default function SelectRole() {
     const [role, setRole] = useState("");
     const navigate = useNavigate();
 
-    const handleRole = () => {
-        console.log(role);
-        navigate(`/signup?role=${role}`);
+    const baseApi = import.meta.env.VITE_API_GATEWAY_BASE_URL;
+
+    const handleRole = async () => {
+        if (!role) return;
+        let serviceUrl;
+        let label;
+        if (role === "PATIENT") {
+            serviceUrl = `${baseApi}/api/patients/health`;
+            label = "Patient";
+        } else if (role === "DOCTOR") {
+            serviceUrl = `${baseApi}/api/doctors/health`;
+            label = "Doctor";
+        } else if (role === "THERAPIST") {
+            serviceUrl = `${baseApi}/api/therapists/health`;
+            label = "Therapist";
+        }
+        try {
+            await warmupService({
+                url: serviceUrl,
+                label,
+            });
+
+            navigate(`/signup?role=${role}`);
+        } catch {
+            toast.info(
+                "Some issue from Render (free-tier). Please visit Github"
+            );
+        }
     };
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 p-4 sm:p-6 lg:p-8">

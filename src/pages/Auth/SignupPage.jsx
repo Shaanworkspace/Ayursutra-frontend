@@ -30,50 +30,111 @@ export default function SignupPage() {
             return;
         }
     }, [role, navigate]);
-
     const handleSignUp = async () => {
-        const SignUpRequest = {
+        const signUpRequest = {
             firstName: fName,
             lastName: lName,
             email,
             password,
             role,
         };
-        const config = {
-            header: {
-                "Content-Type": "application/json",
-            },
-            timeout: 320000,
-        };
+
+        const toastId = toast.loading("Sending request to server...");
+
+        // Timer to detect cold start
+        const coldStartTimer = setTimeout(() => {
+            toast.loading(
+                "Server is waking up (free-tier) Render . Please wait...",
+                {
+                    id: toastId,
+                }
+            );
+        }, 6000); // 6 seconds = safe threshold
+
         try {
             const res = await axios.post(
                 `${baseApi}/api/user/register`,
-                SignUpRequest,
-                config
+                signUpRequest,
+                {
+                    headers: { "Content-Type": "application/json" },
+                    timeout: 120000,
+                }
             );
-            const status = res.status;
-            console.log(res.status);
-            if (status == 201) {
-                toast.success(
-                    "Account Created Successfully !! Navigating to Login Page"
-                );
-                setTimeout(() => {
-                    navigate("/login");
-                }, 2000);
-            }
+
+            clearTimeout(coldStartTimer);
+
+            toast.success(
+                "Account created successfully! Redirecting to login...",
+                { id: toastId }
+            );
+
+            setTimeout(() => navigate("/login"), 2000);
         } catch (error) {
+            clearTimeout(coldStartTimer);
+
             if (error.code === "ECONNABORTED") {
-                console.log("Render is taking time to wake up ! Please Retry");
+                toast.error(
+                    "Server is still waking up. Please try again in a moment.",
+                    { id: toastId }
+                );
             } else if (error.response) {
-                const message =
-                    error.response.data.message ||
-                    "An unexpected error occurred.";
-                toast.error(message);
+                toast.error(
+                    error.response.data.message || "Something went wrong",
+                    { id: toastId }
+                );
             } else {
-                console.log("Other error", error);
+                toast.error("Network error. Please check connection.", {
+                    id: toastId,
+                });
             }
         }
     };
+
+    // const handleSignUp = async () => {
+    //     const SignUpRequest = {
+    //         firstName: fName,
+    //         lastName: lName,
+    //         email,
+    //         password,
+    //         role,
+    //     };
+    //     const config = {
+    //         header: {
+    //             "Content-Type": "application/json",
+    //         },
+    //         timeout: 320000,
+    //     };
+    //     try {
+    //         console.log("Requested to Server");
+
+    //         const res = await axios.post(
+    //             `${baseApi}/api/user/register`,
+    //             SignUpRequest,
+    //             config
+    //         );
+    //         const status = res.status;
+    //         console.log(res.status);
+    //         if (status == 201) {
+    //             toast.success(
+    //                 "Account Created Successfully !! Navigating to Login Page"
+    //             );
+    //             setTimeout(() => {
+    //                 navigate("/login");
+    //             }, 2000);
+    //         }
+    //     } catch (error) {
+    //         if (error.code === "ECONNABORTED") {
+    //             console.log("Render is taking time to wake up ! Please Retry");
+    //         } else if (error.response) {
+    //             const message =
+    //                 error.response.data.message ||
+    //                 "An unexpected error occurred.";
+    //             toast.error(message);
+    //         } else {
+    //             console.log("Other error", error);
+    //         }
+    //     }
+    // };
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-cyan-50 to-teal-100 p-4">
             <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl p-8">
@@ -159,7 +220,7 @@ export default function SignupPage() {
                         className={`w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold rounded-xl shadow-lg
                                             ${
                                                 !passwordsMatch
-                                                    ? "bg-gradient-to-r from-cyan-600 to-teal-600 text-white"
+                                                    ? "bg-gradient-to-r from-cyan-600 to-teal-600 text-white hover:-translate-y-[1px] hover:from-cyan-500 hover:to-teal-500 active:translate-y-0 active:shadow-md"
                                                     : "bg-gray-300 text-gray-500 cursor-not-allowed"
                                             }`}
                     >
