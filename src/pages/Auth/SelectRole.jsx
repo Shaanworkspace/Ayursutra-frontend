@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { UserCircle, Stethoscope, Heart, CheckCircle } from "lucide-react";
 import { useNavigate } from "react-router";
-import { warmupSingleService } from "@/utils/warmupSingleService";
+import { warmupService } from "@/utils/warmupService";
 import { toast } from "sonner";
 
 export default function SelectRole() {
@@ -33,7 +33,7 @@ export default function SelectRole() {
             }
 
             try {
-                await warmupSingleService({ url: serviceUrl, label });
+                await warmupService({ url: serviceUrl, label });
                 navigate(`/signup?role=${selectedRole}`);
             } catch {
                 toast.info(

@@ -21,9 +21,12 @@ export default function LoginPage() {
     const dispatch = useDispatch();
     const baseApi = import.meta.env.VITE_API_GATEWAY_BASE_URL;
 
-    warmupAllServices();
+    useEffect(() => {
+        warmupAllServices();
+    }, []);
     const handleLogin = async () => {
         if (isProcessing) return;
+        warmupAllServices();
         setIsProcessing(true);
 
         const toastId = toast.info(
