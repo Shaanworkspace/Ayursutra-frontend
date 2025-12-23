@@ -6,7 +6,8 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router";
 import { useDispatch } from "react-redux";
 import { setCredentials } from "@/Store/Slices/authSlice";
-import { warmupSilent } from "@/utils/warmupSilent";
+
+import { warmupAllServices } from "@/utils/warmupAllServices";
 
 export default function LoginPage() {
     const [email, setEmail] = useState("");
@@ -14,45 +15,19 @@ export default function LoginPage() {
     const [showPassword, setShowPassword] = useState(false);
     const [servicesLoading, setServicesLoading] = useState(true);
     const [showLoadingPopup, setShowLoadingPopup] = useState(true);
+    const [isProcessing, setIsProcessing] = useState(false);
 
     const navigate = useNavigate();
     const dispatch = useDispatch();
     const baseApi = import.meta.env.VITE_API_GATEWAY_BASE_URL;
-
-    useEffect(() => {
-        let cancelled = false;
-
-        const warmupAll = async () => {
-            try {
-                await Promise.all([
-                    warmupSilent({ url: `${baseApi}/api/patients/health` }),
-                    warmupSilent({ url: `${baseApi}/api/doctors/health` }),
-                    warmupSilent({ url: `${baseApi}/api/therapists/health` }),
-                ]);
-
-                if (!cancelled) {
-                    setServicesLoading(false);
-                    setShowLoadingPopup(false);
-                    toast.success("Services started successfully");
-                }
-            } catch {
-                if (!cancelled) {
-                    setServicesLoading(false);
-                    setShowLoadingPopup(false);
-                    toast.error("Failed to start services");
-                }
-            }
-        };
-
-        warmupAll();
-        return () => (cancelled = true);
-    }, []);
-
+    warmupAllServices();
     const handleLogin = async () => {
-        if (servicesLoading) {
-            setShowLoadingPopup(true);
-            return;
-        }
+        if (isProcessing) return;
+        setIsProcessing(true);
+
+        const toastId = toast.loading(
+            "Request sent. Server is waking up, response coming…"
+        );
 
         try {
             const res = await axios.post(
@@ -60,6 +35,8 @@ export default function LoginPage() {
                 { email, password },
                 { timeout: 320000 }
             );
+
+            toast.success("Login successful", { id: toastId });
 
             dispatch(
                 setCredentials({ user: res.data, userId: res.data.authId })
@@ -71,20 +48,22 @@ export default function LoginPage() {
             else if (role === "THERAPIST") navigate("/therapist/dashboard");
             else navigate("/select-role");
         } catch {
-            toast.error("Invalid email or password");
+            toast.error("Login failed or server unavailable", { id: toastId });
+        } finally {
+            setIsProcessing(false);
         }
     };
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-gray-900 to-gray-800 p-4 relative">
             {/* FLOATING LOADING POPUP */}
-            {showLoadingPopup && servicesLoading && (
+            {isProcessing && (
                 <div className="fixed top-6 right-6 z-50">
                     <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-900 border border-gray-700 shadow-xl">
                         <div className="w-4 h-4 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" />
                         <p className="text-sm text-gray-300">
-                            Render (free-tier) takes time to wake server, please
-                            wait…
+                            Server waking up, Render (Free-Tier) response
+                            incoming…
                         </p>
                     </div>
                 </div>
@@ -148,10 +127,28 @@ export default function LoginPage() {
                     {/* Login Button */}
                     <button
                         onClick={handleLogin}
-                        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold shadow-lg hover:from-indigo-500 hover:to-purple-500 transition"
+                        disabled={isProcessing}
+                        className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl
+        bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold
+        shadow-lg transition
+        ${
+            isProcessing
+                ? "opacity-70 cursor-not-allowed"
+                : "hover:from-indigo-500 hover:to-purple-500"
+        }
+    `}
                     >
-                        Log In
-                        <ArrowRight className="w-4 h-4" />
+                        {isProcessing ? (
+                            <>
+                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                Processing…
+                            </>
+                        ) : (
+                            <>
+                                Log In
+                                <ArrowRight className="w-4 h-4" />
+                            </>
+                        )}
                     </button>
                 </div>
 

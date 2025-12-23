@@ -13,28 +13,11 @@ import {
 } from "lucide-react";
 import Navbar from "@/pages/Home/components/navbar";
 import Footer from "./components/Footer";
-import axios from "@/lib/axios";
-import { toast } from "sonner";
-import { warmupService } from "@/utils/warmupService";
-import { warmupSilent } from "@/utils/warmupSilent";
+import { warmupAllServices } from "@/utils/warmupAllServices";
 
 export default function HomePage() {
-    const baseApi = import.meta.env.VITE_API_GATEWAY_BASE_URL;
     useEffect(() => {
-        let cancelled = false;
-
-        const warmupAll = async () => {
-            await Promise.all([
-                warmupSilent({ url: `${baseApi}/api/user/health` }),
-                warmupSilent({ url: `${baseApi}/api/health` }),
-            ]);
-        };
-
-        warmupAll();
-
-        return () => {
-            cancelled = true;
-        };
+        warmupAllServices();
     }, []);
 
     return (
