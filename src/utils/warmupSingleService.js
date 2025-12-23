@@ -28,13 +28,13 @@ export async function warmupSingleService({
         try {
             await axios.get(url, { timeout: 120000 });
 
-            console.log(`[WARMUP] ${service} service is UP`);
-            toast.info(`[WARMUP] ${service} service is UP`);
+            console.log(`${service} service is UP`);
+            toast.success(` ${service} service is UP`);
             dispatch(setServiceStatus({ service, status: "up" }));
             return true;
         } catch (err) {
-            console.log(`[WARMUP] ${service} not ready, retrying...`);
-            toast.info(`[WARMUP] ${service} not ready, retrying...`);
+            console.log(` ${service} not ready, retrying...`);
+            toast.warning(`${service} not ready, retrying...`);
             await new Promise((r) => setTimeout(r, 8000));
         }
     }
@@ -42,7 +42,9 @@ export async function warmupSingleService({
     console.log(
         `[WARMUP] ${service} FAILED to start within ${timeout / 1000}s`
     );
-    toast.info(`[WARMUP] ${service} FAILED to start within ${timeout / 1000}s`);
+    toast.error(
+        `[WARMUP] ${service} FAILED to start within ${timeout / 1000}s`
+    );
     dispatch(setServiceStatus({ service, status: "down" }));
     return false;
 }
