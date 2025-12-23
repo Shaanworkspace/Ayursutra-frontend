@@ -20,6 +20,80 @@ export default function LoginPage() {
     const navigate = useNavigate();
     const dispatch = useDispatch();
     const baseApi = import.meta.env.VITE_API_GATEWAY_BASE_URL;
+
+    useEffect(() => {
+        let remaining = 150;
+
+        const messages = [
+            "Initializing server",
+            "Waking backend services",
+            "Starting application containers",
+            "Connecting to Docker",
+            "Connecting to database",
+            "Loading application context",
+            "Finalizing startup",
+        ];
+
+        let messageIndex = 0;
+
+        const toastId = toast(
+            () => (
+                <div>
+                    <p className="font-semibold">{messages[messageIndex]}</p>
+                    <p className="text-xs text-gray-400">
+                        Render free-tier cold start
+                    </p>
+                    <p className="mt-1 text-sm">
+                        Ready in ~ <b>{remaining}s</b>
+                    </p>
+                </div>
+            ),
+            {
+                position: "top-left",
+                duration: Infinity,
+            }
+        );
+
+        const interval = setInterval(() => {
+            remaining -= 1;
+
+            // Change message every 5 seconds
+            if (remaining % 15 === 0) {
+                messageIndex = (messageIndex + 1) % messages.length;
+            }
+
+            toast(
+                () => (
+                    <div>
+                        <p className="font-semibold">
+                            {messages[messageIndex]}
+                        </p>
+                        <p className="text-xs text-gray-400">
+                            Render free-tier cold start
+                        </p>
+                        <p className="mt-1 text-sm">
+                            Ready in ~ <b>{remaining}s</b>
+                        </p>
+                    </div>
+                ),
+                { id: toastId }
+            );
+
+            if (remaining <= 0) {
+                toast.success("Server is ready", {
+                    id: toastId,
+                    position: "top-left",
+                });
+                clearInterval(interval);
+            }
+        }, 1000);
+
+        return () => {
+            clearInterval(interval);
+            toast.dismiss(toastId);
+        };
+    }, []);
+
     warmupAllServices();
     const handleLogin = async () => {
         if (isProcessing) return;
