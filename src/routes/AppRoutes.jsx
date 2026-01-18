@@ -1,22 +1,27 @@
-// src/routes/AppRoutes.jsx
-import { BrowserRouter, Routes, Route } from "react-router";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+
 import HomePage from "../pages/Home/HomePage";
 import LoginPage from "@/pages/Auth/LoginPage";
 import SignupPage from "@/pages/Auth/SignupPage";
 import SelectRole from "@/pages/Auth/SelectRole";
 import ProtectedRoute from "./ProtectedRoute";
 
-import PatientProfile from "@/pages/Patients/PatientProfile";
+import PatientProfile from "@/pages/Patients/Pages/PatientProfile";
 import PatientDashboard from "@/pages/Patients/PatientDashboard";
 import DoctorProfile from "@/pages/Doctors/DoctorProfile";
 import DoctorDashboard from "@/pages/Doctors/DoctorDashboard";
 import TherapistDashboard from "@/pages/Therapists/TherapistDashboard";
 import TherapistProfile from "@/pages/Therapists/TherapistProfile";
+import AppointmentDoctor from "@/pages/Patients/Pages/AppointmentDoctor";
+import OAuthCallback from "@/pages/Auth/OAuthCallback";
+import UnderReviewPage from "@/pages/Auth/UnderReviewPage";
+import RejectedPage from "@/pages/Auth/RejectedPage";
 
 export default function AppRoutes() {
     return (
         <BrowserRouter>
             <Routes>
+                <Route path="/oauth/callback" element={<OAuthCallback />} />
                 {/* Public */}
                 <Route path="/" element={<HomePage />} />
                 <Route path="/login" element={<LoginPage />} />
@@ -24,6 +29,8 @@ export default function AppRoutes() {
                 <Route path="/select-role" element={<SelectRole />} />
                 {/* Signup always expects ?role=... */}
                 <Route path="/signup" element={<SignupPage />} />
+                <Route path="/under-review" element={<UnderReviewPage />} />
+                <Route path="/rejected" element={<RejectedPage />} />
 
                 {/* Doctor */}
                 <Route
@@ -57,6 +64,14 @@ export default function AppRoutes() {
                     element={
                         <ProtectedRoute role="PATIENT">
                             <PatientProfile />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/patient/appointment-doc"
+                    element={
+                        <ProtectedRoute role="PATIENT">
+                            <AppointmentDoctor />
                         </ProtectedRoute>
                     }
                 />

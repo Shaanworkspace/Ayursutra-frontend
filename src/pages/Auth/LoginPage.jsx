@@ -1,6 +1,7 @@
 /* eslint-disable no-unused-vars */
 import React, { useEffect, useState } from "react";
-import { Eye, EyeOff, Mail, Lock, ArrowRight } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, ArrowRight, User } from "lucide-react";
+
 import axios from "@/lib/axios";
 import { toast } from "sonner";
 import { useNavigate } from "react-router";
@@ -16,10 +17,55 @@ export default function LoginPage() {
     const [servicesLoading, setServicesLoading] = useState(true);
     const [showLoadingPopup, setShowLoadingPopup] = useState(true);
     const [isProcessing, setIsProcessing] = useState(false);
+    const [selectedRole, setSelectedRole] = useState("");
 
     const navigate = useNavigate();
     const dispatch = useDispatch();
     const baseApi = import.meta.env.VITE_API_GATEWAY_BASE_URL;
+    const baseGithubApi = import.meta.env.VITE_API_GATEWAY_GITHUB_URL;
+
+    useEffect(() => {
+        const handleMessage = (event) => {
+            const data = event.data;
+            if (!data) return;
+
+            console.log("OAuth data:", data);
+
+            if (data.approvalStatus === "PENDING") {
+                navigate("/under-review");
+                return;
+            }
+
+            if (data.approvalStatus === "REJECTED") {
+                navigate("/rejected", {
+                    state: { reason: data.rejectionReason },
+                });
+                return;
+            }
+
+            if (data.approvalStatus === "APPROVED") {
+                dispatch(
+                    setCredentials({
+                        jwt: data.jwt,
+                        role: data.role,
+                    }),
+                );
+
+                if (data.role === "DOCTOR") navigate("/doctor/dashboard");
+                else if (data.role === "PATIENT")
+                    navigate("/patient/dashboard");
+                else if (data.role === "THERAPIST")
+                    navigate("/therapist/dashboard");
+                else navigate("/select-role");
+            }
+        };
+
+        window.addEventListener("message", handleMessage);
+
+        return () => {
+            window.removeEventListener("message", handleMessage);
+        };
+    }, []);
 
     useEffect(() => {
         warmupAllServices();
@@ -30,23 +76,38 @@ export default function LoginPage() {
         setIsProcessing(true);
 
         const toastId = toast.info(
-            "Request sent. Server is waking up, response coming…"
+            "Request sent. Server is waking up, response coming…",
         );
 
         try {
             const res = await axios.post(
                 `${baseApi}/api/user/login`,
-                { email, password },
-                { timeout: 320000 }
+                { email, password, role: selectedRole },
+                { timeout: 420000 },
             );
+            console.log(res);
+            if (res.status === 202) {
+                navigate("/under-review");
+            }
+
+            if (res.status === 403) {
+                navigate("/rejected", {
+                    state: { reason: res.data.rejectionReason },
+                });
+            }
 
             toast.success("Login successful", { id: toastId });
-
+            console.log(res.data);
             dispatch(
-                setCredentials({ user: res.data, userId: res.data.authId })
+                setCredentials({
+                    jwt: res.data.jwt,
+                    role: res.data.role,
+                }),
             );
 
-            const role = res.data.roles[0];
+            console.log("Login gave to Slice: ", res.data);
+
+            const role = res.data.role;
             if (role === "DOCTOR") navigate("/doctor/dashboard");
             else if (role === "PATIENT") navigate("/patient/dashboard");
             else if (role === "THERAPIST") navigate("/therapist/dashboard");
@@ -57,6 +118,29 @@ export default function LoginPage() {
             setIsProcessing(false);
         }
     };
+    const handleGithubLogin = async () => {
+        if (!selectedRole) {
+            toast.error("Please select role first");
+            return;
+        }
+        console.log("Sening with github : ", selectedRole);
+
+        await axios.post(`${baseApi}/api/user/pre-login`, {
+            role: selectedRole,
+        });
+        console.log("Success Sending Role");
+        window.open(
+            `${baseGithubApi}/oauth2/authorization/github`,
+            "githubLogin",
+            "width=600,height=700",
+        );
+    };
+
+    const canLogin =
+        email.trim() !== "" &&
+        password.trim() !== "" &&
+        selectedRole.trim() !== "" &&
+        !isProcessing;
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-gray-900 to-gray-800 p-4 relative">
@@ -128,19 +212,87 @@ export default function LoginPage() {
                         </div>
                     </div>
 
-                    {/* Login Button */}
+                    {/*  Role Selector */}
+                    {/* Role Selection Section */}
+                    <div>
+                        <label className="text-xs font-medium text-gray-400 mb-2 block">
+                            Select Role
+                        </label>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            {[
+                                { id: "DOCTOR", label: "Doctor", icon: "🩺" },
+                                { id: "PATIENT", label: "Patient", icon: "💊" },
+                                {
+                                    id: "THERAPIST",
+                                    label: "Therapist",
+                                    icon: "🧠",
+                                },
+                            ].map((role) => {
+                                const isSelected = selectedRole === role.id;
+                                return (
+                                    <button
+                                        key={role.id}
+                                        type="button"
+                                        onClick={() => setSelectedRole(role.id)}
+                                        className={`relative group flex flex-col items-center justify-center py-4 px-2 rounded-xl border transition-all duration-300
+                        ${
+                            isSelected
+                                ? "border-indigo-500 bg-gradient-to-tr from-indigo-600/40 to-purple-600/30"
+                                : "border-gray-700 bg-gray-800/60 hover:border-indigo-400 hover:bg-gray-800"
+                        }
+                    `}
+                                    >
+                                        {/* Tick Icon When Selected */}
+                                        {isSelected && (
+                                            <div className="absolute top-2 right-2 bg-indigo-500 p-1 rounded-full">
+                                                <svg
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    fill="none"
+                                                    viewBox="0 0 24 24"
+                                                    strokeWidth={2.5}
+                                                    stroke="white"
+                                                    className="w-3 h-3"
+                                                >
+                                                    <path
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        d="M5 13l4 4L19 7"
+                                                    />
+                                                </svg>
+                                            </div>
+                                        )}
+
+                                        {/* Icon + Label */}
+                                        <span className="text-2xl mb-1">
+                                            {role.icon}
+                                        </span>
+                                        <span
+                                            className={`text-sm font-medium ${
+                                                isSelected
+                                                    ? "text-indigo-300"
+                                                    : "text-gray-400"
+                                            }`}
+                                        >
+                                            {role.label}
+                                        </span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                    {/* LOGIN BUTTON */}
                     <button
                         onClick={handleLogin}
-                        disabled={isProcessing}
+                        disabled={!canLogin}
                         className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl
-        bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold
-        shadow-lg transition
-        ${
-            isProcessing
-                ? "opacity-70 cursor-not-allowed"
-                : "hover:from-indigo-500 hover:to-purple-500"
-        }
-    `}
+                            bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold shadow-lg transition
+                            ${
+                                canLogin
+                                    ? "hover:from-indigo-500 hover:to-purple-500"
+                                    : "opacity-50 cursor-not-allowed"
+                            }
+                        `}
                     >
                         {isProcessing ? (
                             <>
@@ -153,6 +305,25 @@ export default function LoginPage() {
                                 <ArrowRight className="w-4 h-4" />
                             </>
                         )}
+                    </button>
+                    <button
+                        onClick={handleGithubLogin}
+                        disabled={!selectedRole}
+                        className={`w-full mt-3 flex items-center justify-center gap-2 py-2.5 rounded-xl
+        bg-gray-800 border border-gray-700 text-gray-200 font-semibold
+        hover:bg-gray-700 transition
+        ${!selectedRole ? "opacity-50 cursor-not-allowed" : ""}
+    `}
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="currentColor"
+                            className="w-5 h-5"
+                        >
+                            <path d="M12 .5C5.73.5.5 5.74.5 12.03c0 5.1 3.29 9.42 7.86 10.95.58.1.79-.25.79-.56v-2.1c-3.2.7-3.88-1.54-3.88-1.54-.52-1.34-1.28-1.7-1.28-1.7-1.04-.72.08-.7.08-.7 1.15.08 1.76 1.19 1.76 1.19 1.02 1.76 2.68 1.25 3.34.96.1-.74.4-1.25.72-1.54-2.55-.29-5.23-1.29-5.23-5.73 0-1.26.45-2.3 1.18-3.11-.12-.29-.51-1.45.11-3.03 0 0 .97-.31 3.18 1.19a10.8 10.8 0 0 1 2.9-.4c.98 0 1.97.14 2.9.4 2.2-1.5 3.18-1.19 3.18-1.19.62 1.58.23 2.74.11 3.03.73.81 1.18 1.85 1.18 3.11 0 4.45-2.68 5.43-5.24 5.71.41.36.78 1.06.78 2.14v3.17c0 .31.21.66.79.56 4.57-1.53 7.86-5.85 7.86-10.95C23.5 5.74 18.27.5 12 .5Z" />
+                        </svg>
+                        Login with GitHub
                     </button>
                 </div>
 

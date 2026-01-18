@@ -41,11 +41,12 @@ import {
     Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { PatientLayout } from "./components/PatientLayout";
+import { PatientLayout } from "../components/PatientLayout";
 
 export const PatientProfile = () => {
     const { user } = useSelector((state) => state.auth);
     const fileInputRef = useRef(null);
+    const profile = useSelector((state) => state.profile.data);
 
     // State management
     const [activeTab, setActiveTab] = useState("personal");
@@ -57,13 +58,14 @@ export const PatientProfile = () => {
     // Profile data state
     const [profileData, setProfileData] = useState({
         // Personal Info
-        firstName: "Sarah",
-        lastName: "Johnson",
-        email: "sarah.johnson@email.com",
-        phone: "+1 (555) 123-4567",
+        patientId: profile?.userId,
+        firstName: profile?.firstName,
+        lastName: profile?.lastName,
+        email: profile?.email,
+        phone: profile?.phoneNumber,
         alternatePhone: "",
-        dateOfBirth: "1990-05-15",
-        gender: "Female",
+        dateOfBirth: profile?.dateOfBirth,
+        gender: profile?.gender,
         address: "123 Wellness Street",
         city: "Health City",
         state: "California",
@@ -71,25 +73,19 @@ export const PatientProfile = () => {
         country: "United States",
 
         // Medical Info
-        bloodGroup: "O+",
-        height: "5'6\"",
-        weight: "135 lbs",
+        bloodGroup: profile?.bloodGroup,
+        height: profile?.height,
+        weight: profile?.weight,
         allergies: "Penicillin",
-        chronicConditions: "None",
-        currentMedications: "Vitamin D, Omega-3",
-        familyHistory: "Diabetes (Father)",
-        primaryPhysician: "Dr. Robert Wilson",
         insuranceProvider: "Blue Cross Blue Shield",
         insuranceNumber: "BCB-123456789",
 
         // Emergency Contact
-        emergencyName: "John Johnson",
-        emergencyRelation: "Spouse",
-        emergencyPhone: "+1 (555) 987-6543",
+        emergencyName: profile?.emergencyName,
+        emergencyRelation: profile?.emergencyRelation,
+        emergencyPhone: profile?.emergencyPhone,
 
         // Preferences
-        language: "English",
-        timezone: "America/Los_Angeles",
         notifications: {
             email: true,
             sms: true,
@@ -215,7 +211,7 @@ export const PatientProfile = () => {
     return (
         <PatientLayout>
             <div className="p-6 lg:p-8">
-                <div className="max-w-6xl mx-auto space-y-6">
+                <div className="max-w-7xl mx-auto space-y-6  mt-20">
                     {/* ==================== HEADER ==================== */}
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                         <div>
@@ -234,8 +230,8 @@ export const PatientProfile = () => {
                                     saveStatus === "saving"
                                         ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
                                         : saveStatus === "saved"
-                                        ? "bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400"
-                                        : "bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400"
+                                          ? "bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400"
+                                          : "bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400"
                                 }`}
                             >
                                 {saveStatus === "saving" && (
@@ -326,7 +322,8 @@ export const PatientProfile = () => {
                                                 <BadgeCheck className="w-6 h-6 text-cyan-500" />
                                             </div>
                                             <p className="text-gray-600 dark:text-gray-400 mt-1">
-                                                Patient ID: PAT-2024-001
+                                                Patient ID:{" "}
+                                                {profileData.patientId}
                                             </p>
                                             <div className="flex items-center gap-4 mt-2 text-sm text-gray-500 dark:text-gray-400">
                                                 <span className="flex items-center gap-1">

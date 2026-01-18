@@ -1,8 +1,5 @@
 /* eslint-disable no-unused-vars */
-// File: patient/PatientDashboard.jsx
-// UI-ONLY VERSION (static, dark, no data / business logic)
-
-import React from "react";
+import React, { useEffect } from "react";
 import {
     Calendar,
     FileText,
@@ -21,8 +18,51 @@ import {
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { PatientLayout } from "./components/PatientLayout";
+import { useDispatch, useSelector } from "react-redux";
+import axios from "@/lib/axios";
+import { setProfile } from "@/Store/Slices/profileSlice";
 
 export default function PatientDashboard() {
+    const dispatch = useDispatch();
+
+    const token = useSelector((state) => state.auth.token);
+    const profile = useSelector((state) => state.profile.data);
+    console.log(token);
+    console.log("profile:  ", profile);
+    const gateway = import.meta.env.VITE_API_GATEWAY_BASE_URL;
+
+    const fname = profile?.firstName || "";
+
+    useEffect(() => {
+        if (!profile && token) {
+            console.log("Bearer ", token);
+            axios
+                .get(`${gateway}/api/patients/profile/me`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                })
+                .then((res) => {
+                    dispatch(
+                        setProfile({
+                            role: "PATIENT",
+                            data: res.data,
+                        }),
+                    );
+                })
+                .catch((error) => {
+                    console.error(
+                        "This is Error From Patient Dashboard while calling patient Data : ",
+                        error,
+                    );
+                });
+        }
+    }, [dispatch, profile, token]);
+
+    if (!profile) {
+        return (
+            <div className="text-white p-6">Loading patient dashboard...</div>
+        );
+    }
+
     return (
         <PatientLayout>
             <div className="min-h-screen bg-gray-950 text-gray-100 p-6 pt-28">
@@ -35,17 +75,19 @@ export default function PatientDashboard() {
                                 Good Day
                             </p>
                             <h1 className="text-3xl lg:text-4xl font-bold">
-                                Welcome back 👋
+                                Welcome back, {fname} 👋
                             </h1>
                             <p className="text-gray-400 mt-2">
                                 Here is your health overview
                             </p>
                         </div>
 
-                        <Button className="bg-cyan-600 hover:bg-cyan-700 text-white">
-                            <Plus className="w-4 h-4 mr-2" />
-                            Book Appointment
-                        </Button>
+                        <Link to="/patient/appointment-doc">
+                            <Button className="bg-cyan-600 hover:bg-cyan-700 text-white">
+                                <Plus className="w-4 h-4 mr-2" />
+                                Book Appointment
+                            </Button>
+                        </Link>
                     </div>
 
                     {/* ================= QUICK STATS ================= */}
