@@ -8,7 +8,9 @@ import { Link, useLocation } from "react-router-dom";
 
 export default function RejectedPage() {
     const location = useLocation();
-    const reason = location.state?.reason;
+    const reason =
+        location.state?.reason ||
+        "Your request did not meet our verification requirements.";
 
     return (
         <div className="min-h-screen flex flex-col">
@@ -29,11 +31,9 @@ export default function RejectedPage() {
                         at this time.
                     </p>
 
-                    {reason && (
-                        <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-xl px-4 py-3 mb-6 text-sm">
-                            <strong>Reason:</strong> {reason}
-                        </div>
-                    )}
+                    <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-xl px-4 py-3 mb-6 text-sm">
+                        <strong>Reason:</strong> {reason}
+                    </div>
 
                     <div className="flex items-center justify-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-8">
                         <MailWarning className="w-4 h-4" />

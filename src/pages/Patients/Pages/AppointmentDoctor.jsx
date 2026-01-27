@@ -1,6 +1,7 @@
 /* eslint-disable no-unused-vars */
 import React, { use, useEffect, useMemo, useState } from "react";
 import { PatientLayout } from "../components/PatientLayout";
+import { Sun, Moon } from "lucide-react";
 import {
     User,
     Phone,
@@ -27,17 +28,21 @@ import { Calendar as ShadcnCalendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { useSelector } from "react-redux";
 import axios from "@/lib/axios";
+import { toast } from "sonner";
 
 const AppointmentDoctor = () => {
     const gateway = import.meta.env.VITE_API_GATEWAY_BASE_URL;
-    const profile = useSelector((state) => state.profile.data);
+    const reduxUser = useSelector((state) => state.auth.userResponse);
+    const reduxProfile = useSelector((state) => state.profile.data);
+    const auth = useSelector((state) => state.auth);
+
+    const profile =
+        JSON.parse(localStorage.getItem("profile")).data || reduxProfile;
+    const user = JSON.parse(localStorage.getItem("userResponse")) || reduxUser;
+
     const [description, setDescription] = useState("");
     const [appointmentType, setAppoitmentType] = useState("");
-
-    // new Date()-> 2026-01-18T10:45:30.456Z
-    // const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
     const [date, setDate] = useState(new Date());
-
     const [time, setTime] = useState("");
 
     //doctors
@@ -46,24 +51,33 @@ const AppointmentDoctor = () => {
     const [location, setLocation] = useState("");
     const [selectDoctor, setSelectDoctor] = useState("");
     const [selectedDoctorId, setSelectedDoctorId] = useState("");
-
-    const patient = {
-        name: profile?.firstName + " " + profile?.lastName,
-        email: profile?.email,
-        phone: profile?.phoneNumber || "Update Phone . . .",
-        patientId: profile?.userId,
-        appointmentDate: format(date, "yyyy-MM-dd"),
-        appointmentTime: time,
+    const [dark, setDark] = useState(
+        document.documentElement.classList.contains("dark"),
+    );
+    const toggleTheme = () => {
+        document.documentElement.classList.toggle("dark");
+        setDark(!dark);
     };
 
+    const patient = useMemo(() => {
+        if (!user || !profile) return null;
+        return {
+            name: `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() || "",
+            email: user.email ?? "",
+            phone: profile.phoneNumber || "Update Phone . . .",
+            patientId: profile.userId,
+            appointmentDate: format(date, "yyyy-MM-dd"),
+            appointmentTime: time,
+        };
+    }, [user, profile, date, time]);
+
     useEffect(() => {
-        axios
-            .get(`${gateway}/api/doctors`)
-            .then((res) => res.json())
-            .then((data) => {
-                setDoctors(data);
-            });
+        axios.get(`${gateway}/api/doctors`).then((res) => {
+            console.log("Doc : ", res.data);
+            setDoctors(res.data);
+        });
     }, []);
+
     const filteredDoctors = useMemo(() => {
         let result = doctors;
 
@@ -78,18 +92,70 @@ const AppointmentDoctor = () => {
         return result;
     }, [doctors, specialist, location]);
 
+    // Booking appointment
+    const handleBookAppointment = async () => {
+        if (!selectDoctor) {
+            toast.error("Please select a doctor");
+            return;
+        }
+
+        if (!description) {
+            toast.error("Please enter description");
+            return;
+        }
+
+        if (!date) {
+            toast.error("Please select a date");
+            return;
+        }
+        const dataForAppointment = {
+            patientId: patient?.patientId,
+            doctorId: selectDoctor,
+            visitDate: format(date, "yyyy-MM-dd"),
+            symptoms: description,
+        };
+
+        console.log("Data for Appointment : ", dataForAppointment);
+
+        const res = axios.post(
+            `${gateway}/api/patients/medical-records/book`,
+            dataForAppointment,
+            {
+                headers: {
+                    Authorization: `Bearer ${auth.token}`,
+                },
+            },
+        );
+        toast.success("Booked Appointment !!! ");
+    };
+
     return (
         <PatientLayout>
             <div className="p-6 lg:p-8 mt-20">
                 <div className="max-w-7xl mx-auto space-y-8">
                     {/* ================= HEADER ================= */}
-                    <div>
-                        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-                            Book Appointment
-                        </h1>
-                        <p className="text-gray-600 dark:text-gray-400 mt-1">
-                            Fill appointment details and select doctor
-                        </p>
+
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+                                Book Appointment
+                            </h1>
+                            <p className="text-gray-600 dark:text-gray-400 mt-1">
+                                Fill appointment details and select doctor
+                            </p>
+                        </div>
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={toggleTheme}
+                            className="size-14  rounded-4xl"
+                        >
+                            {dark ? (
+                                <Sun className="h-9 w-9 size-5" />
+                            ) : (
+                                <Moon className="h-9 w-9 size-5" />
+                            )}
+                        </Button>
                     </div>
 
                     {/* ================= PATIENT DETAILS ================= */}
@@ -143,7 +209,7 @@ const AppointmentDoctor = () => {
                         <div className="grid sm:grid-cols-2 gap-6">
                             <div>
                                 <label className="block text-sm font-medium mb-2">
-                                    Select Specialist
+                                    Select Avaliability
                                 </label>
                                 <Select onValueChange={setSpecialist}>
                                     <SelectTrigger className="w-full">
@@ -205,7 +271,10 @@ const AppointmentDoctor = () => {
 
                                 <SelectContent>
                                     {filteredDoctors.map((doc) => (
-                                        <SelectItem key={doc.id} value={doc.id}>
+                                        <SelectItem
+                                            key={doc.userId}
+                                            value={doc.userId}
+                                        >
                                             {doc.name}
                                         </SelectItem>
                                     ))}
@@ -276,7 +345,10 @@ const AppointmentDoctor = () => {
 
                     {/* ================= ACTION ================= */}
                     <div className="flex justify-end">
-                        <Button className="bg-cyan-600 hover:bg-cyan-700 px-8">
+                        <Button
+                            className="bg-cyan-600 hover:bg-cyan-700 px-8"
+                            onClick={handleBookAppointment}
+                        >
                             Book Appointment
                         </Button>
                     </div>

@@ -30,6 +30,7 @@ export default function LoginPage() {
             if (!data) return;
 
             console.log("OAuth data:", data);
+            console.log("user : ", data.userResponse);
 
             if (data.approvalStatus === "PENDING") {
                 navigate("/under-review");
@@ -48,6 +49,7 @@ export default function LoginPage() {
                     setCredentials({
                         jwt: data.jwt,
                         role: data.role,
+                        userResponse: data.userResponse,
                     }),
                 );
 
@@ -123,12 +125,15 @@ export default function LoginPage() {
             toast.error("Please select role first");
             return;
         }
-        console.log("Sening with github : ", selectedRole);
+        console.log(
+            "Sending Request from github Click with Role : ",
+            selectedRole,
+        );
 
         await axios.post(`${baseApi}/api/user/pre-login`, {
             role: selectedRole,
         });
-        console.log("Success Sending Role");
+        console.log("Success Storing Role");
         window.open(
             `${baseGithubApi}/oauth2/authorization/github`,
             "githubLogin",

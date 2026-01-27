@@ -16,6 +16,9 @@ import AppointmentDoctor from "@/pages/Patients/Pages/AppointmentDoctor";
 import OAuthCallback from "@/pages/Auth/OAuthCallback";
 import UnderReviewPage from "@/pages/Auth/UnderReviewPage";
 import RejectedPage from "@/pages/Auth/RejectedPage";
+import DoctorAppointmentDetail from "@/pages/Doctors/components/DoctorAppointmentDetail";
+import TherapistSessionDetail from "@/pages/Therapists/components/TherapistSessionDetail";
+import TherapistSchedule from "@/pages/Therapists/SlotsComponents/TherapistSchedule";
 
 export default function AppRoutes() {
     return (
@@ -46,6 +49,14 @@ export default function AppRoutes() {
                     element={
                         <ProtectedRoute role="DOCTOR">
                             <DoctorProfile />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/doctor/appointments/:id"
+                    element={
+                        <ProtectedRoute role="DOCTOR">
+                            <DoctorAppointmentDetail />
                         </ProtectedRoute>
                     }
                 />
@@ -90,6 +101,22 @@ export default function AppRoutes() {
                     element={
                         <ProtectedRoute role="THERAPIST">
                             <TherapistProfile />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/therapist/sessions/:id"
+                    element={
+                        <ProtectedRoute role="THERAPIST">
+                            <TherapistSessionDetail />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/therapist/schedule"
+                    element={
+                        <ProtectedRoute role="THERAPIST">
+                            <TherapistSchedule />
                         </ProtectedRoute>
                     }
                 />

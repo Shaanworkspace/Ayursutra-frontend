@@ -25,37 +25,59 @@ import { setProfile } from "@/Store/Slices/profileSlice";
 export default function PatientDashboard() {
     const dispatch = useDispatch();
 
-    const token = useSelector((state) => state.auth.token);
-    const profile = useSelector((state) => state.profile.data);
-    console.log(token);
-    console.log("profile:  ", profile);
+    const reduxUser = useSelector((state) => state.auth.userResponse);
+    const reduxProfile = useSelector((state) => state.profile.data);
+    const reduxRole = useSelector((state) => state.auth.role);
+    const reduxProfileRole = useSelector((state) => state.profile.role);
+    const auth = useSelector((state) => state.auth);
+    const storedProfile = localStorage.getItem("profile");
+    const storedUser = localStorage.getItem("userResponse");
+
+    const profile = storedProfile
+        ? JSON.parse(storedProfile).data
+        : reduxProfile;
+    const user = storedUser ? JSON.parse(storedUser) : reduxUser;
+    const roleU = localStorage.getItem("role") || reduxRole;
+
+    console.log("token :", auth.token);
+    console.log(reduxProfileRole, " : ", profile);
+    console.log(roleU, " :  ", user);
     const gateway = import.meta.env.VITE_API_GATEWAY_BASE_URL;
 
-    const fname = profile?.firstName || "";
-
+    const fname = user?.firstName || "";
+    const lname = user?.lastName || "";
+    const email = user?.email || "";
+    const authUserId = user?.userId || user?.email;
     useEffect(() => {
-        if (!profile && token) {
-            console.log("Bearer ", token);
-            axios
-                .get(`${gateway}/api/patients/profile/me`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                })
-                .then((res) => {
-                    dispatch(
-                        setProfile({
-                            role: "PATIENT",
-                            data: res.data,
-                        }),
-                    );
-                })
-                .catch((error) => {
-                    console.error(
-                        "This is Error From Patient Dashboard while calling patient Data : ",
-                        error,
-                    );
-                });
-        }
-    }, [dispatch, profile, token]);
+        if (!auth.token || !user) return;
+
+        const profileUserId = profile?.email;
+        const authUserId = user?.email;
+
+        const shouldFetch =
+            profileUserId !== authUserId ||
+            reduxProfileRole?.toLowerCase() !== roleU?.toLowerCase();
+
+        if (!shouldFetch) return;
+
+        axios
+            .get(`${gateway}/api/patients/profile/me`, {
+                headers: {
+                    Authorization: `Bearer ${auth.token}`,
+                },
+            })
+            .then((res) => {
+                dispatch(
+                    setProfile({
+                        role: "PATIENT",
+                        data: res.data,
+                    }),
+                );
+            })
+            .catch((error) => {
+                console.error("Error fetching patient profile:", error);
+            });
+    }, [auth.token, user, profile?.userId, reduxProfileRole, dispatch]);
 
     if (!profile) {
         return (

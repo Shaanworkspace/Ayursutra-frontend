@@ -44,48 +44,34 @@ import { Button } from "@/components/ui/button";
 import { PatientLayout } from "../components/PatientLayout";
 
 export const PatientProfile = () => {
-    const { user } = useSelector((state) => state.auth);
+    const user = useSelector((state) => state.auth.userResponse);
     const fileInputRef = useRef(null);
     const profile = useSelector((state) => state.profile.data);
+    console.log("Profile : ", profile);
+    console.log("user : ", user);
 
     // State management
     const [activeTab, setActiveTab] = useState("personal");
     const [isEditing, setIsEditing] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [avatarPreview, setAvatarPreview] = useState(null);
-    const [saveStatus, setSaveStatus] = useState(null); // 'saving', 'saved', 'error'
+    const [saveStatus, setSaveStatus] = useState(null);
 
-    // Profile data state
     const [profileData, setProfileData] = useState({
-        // Personal Info
-        patientId: profile?.userId,
-        firstName: profile?.firstName,
-        lastName: profile?.lastName,
-        email: profile?.email,
-        phone: profile?.phoneNumber,
-        alternatePhone: "",
-        dateOfBirth: profile?.dateOfBirth,
-        gender: profile?.gender,
-        address: "123 Wellness Street",
-        city: "Health City",
-        state: "California",
-        zipCode: "12345",
-        country: "United States",
-
-        // Medical Info
-        bloodGroup: profile?.bloodGroup,
-        height: profile?.height,
-        weight: profile?.weight,
-        allergies: "Penicillin",
-        insuranceProvider: "Blue Cross Blue Shield",
-        insuranceNumber: "BCB-123456789",
-
-        // Emergency Contact
-        emergencyName: profile?.emergencyName,
-        emergencyRelation: profile?.emergencyRelation,
-        emergencyPhone: profile?.emergencyPhone,
-
-        // Preferences
+        patientId: profile?.userId || "",
+        firstName: user?.firstName || "",
+        lastName: user?.lastName || "",
+        email: user?.email || "",
+        phone: profile?.phoneNumber || "",
+        dateOfBirth: profile?.dateOfBirth || "",
+        gender: profile?.gender || "",
+        address: profile?.address || "",
+        bloodGroup: profile?.bloodGroup || "",
+        height: profile?.height || "",
+        weight: profile?.weight || "",
+        emergencyName: profile?.emergencyName || "",
+        emergencyRelation: profile?.emergencyRelation || "",
+        emergencyPhone: profile?.emergencyPhone || "",
         notifications: {
             email: true,
             sms: true,
@@ -284,8 +270,10 @@ export const PatientProfile = () => {
                                             />
                                         ) : (
                                             <div className="w-full h-full flex items-center justify-center text-white text-4xl font-bold">
-                                                {profileData.firstName[0]}
-                                                {profileData.lastName[0]}
+                                                {profileData.firstName?.[0] ||
+                                                    ""}
+                                                {profileData.lastName?.[0] ||
+                                                    ""}
                                             </div>
                                         )}
                                     </div>

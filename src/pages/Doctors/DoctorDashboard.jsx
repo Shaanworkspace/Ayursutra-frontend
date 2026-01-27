@@ -1,8 +1,8 @@
 /* eslint-disable no-unused-vars */
 // doctor/DoctorDashboard.jsx
 
-import React from "react";
-import { useSelector } from "react-redux";
+import React, { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { Link } from "react-router-dom";
 import {
     Calendar,
@@ -13,10 +13,82 @@ import {
     Eye,
 } from "lucide-react";
 import { DoctorLayout } from "./components/DoctorLayout";
+import axios from "axios";
+import { setProfile } from "@/Store/Slices/profileSlice";
 
 export default function DoctorDashboard() {
-    const { user } = useSelector((state) => state.auth);
-    const doctorName = user?.name?.split(" ")[0] || "Doctor";
+    const dispatch = useDispatch();
+
+    const reduxUser = useSelector((state) => state.auth.userResponse);
+    const reduxProfile = useSelector((state) => state.profile.data);
+    const reduxRole = useSelector((state) => state.auth.role);
+    const reduxProfileRole = useSelector((state) => state.profile.role);
+    const auth = useSelector((state) => state.auth);
+    const storedProfile = localStorage.getItem("profile");
+    const storedUser = localStorage.getItem("userResponse");
+    const [showAll, setShowAll] = useState(false);
+
+    const profile = storedProfile
+        ? JSON.parse(storedProfile).data
+        : reduxProfile;
+    const user = storedUser ? JSON.parse(storedUser) : reduxUser;
+    const roleU = localStorage.getItem("role") || reduxRole;
+    const appointments = Array.isArray(profile?.medicalRecords)
+        ? profile.medicalRecords
+        : [];
+
+    console.log(appointments);
+    const sortedAppointments = [...appointments].sort(
+        (a, b) => new Date(b.createdDate) - new Date(a.createdDate),
+    );
+    const visibleAppointments = showAll
+        ? sortedAppointments
+        : sortedAppointments.slice(0, 10);
+    const formatDate = (date) =>
+        date
+            ? new Date(date).toLocaleDateString("en-IN", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+              })
+            : "Not Scheduled";
+
+    console.log("token :", auth.token);
+    console.log("profile:  ", profile);
+    console.log("user :  ", user);
+
+    const gateway = import.meta.env.VITE_API_GATEWAY_BASE_URL;
+    const doctorFName = user?.firstName || "Doctor";
+
+    useEffect(() => {
+        if (!auth.token || !user) return;
+        const profileUserId = profile?.email;
+        const authUserId = user?.email;
+
+        const shouldFetch =
+            profileUserId !== authUserId ||
+            reduxProfileRole?.toLowerCase() !== roleU?.toLowerCase();
+
+        if (shouldFetch) {
+            axios
+                .get(`${gateway}/api/doctors/profile/me`, {
+                    headers: {
+                        Authorization: `Bearer ${auth.token}`,
+                    },
+                })
+                .then((res) => {
+                    dispatch(
+                        setProfile({
+                            role: "DOCTOR",
+                            data: res.data,
+                        }),
+                    );
+                })
+                .catch((error) => {
+                    console.error("Error fetching doctor profile:", error);
+                });
+        }
+    }, [auth.token, user, profile?.userId, reduxProfileRole, dispatch]);
 
     return (
         <DoctorLayout>
@@ -25,7 +97,7 @@ export default function DoctorDashboard() {
                     {/* Header */}
                     <header>
                         <h1 className="text-3xl font-bold">
-                            Welcome back, Dr. {doctorName}
+                            Welcome back, Dr. {doctorFName}
                         </h1>
                         <p className="text-gray-400 mt-1">
                             Here’s a quick overview of today
@@ -58,36 +130,48 @@ export default function DoctorDashboard() {
                         <section className="lg:col-span-2 bg-gray-900 border border-gray-800 rounded-xl">
                             <div className="p-4 border-b border-gray-800">
                                 <h2 className="text-lg font-semibold">
-                                    Today’s Appointments
+                                    My Appointments
                                 </h2>
+                                <p className="text-sm text-gray-400">
+                                    Your scheduled consultations
+                                </p>
                             </div>
 
                             <div className="divide-y divide-gray-800">
-                                <AppointmentRow
-                                    time="10:00 AM"
-                                    patient="Rahul Sharma"
-                                    type="Video"
-                                />
-                                <AppointmentRow
-                                    time="11:30 AM"
-                                    patient="Priya Patel"
-                                    type="In-person"
-                                />
-                                <AppointmentRow
-                                    time="02:00 PM"
-                                    patient="Amit Kumar"
-                                    type="Video"
-                                />
+                                {visibleAppointments.length === 0 && (
+                                    <p className="p-4 text-sm text-gray-400">
+                                        No appointments found
+                                    </p>
+                                )}
+
+                                {visibleAppointments.map((record) => (
+                                    <AppointmentRow
+                                        key={record.medicalRecordId}
+                                        record={record}
+                                        time={formatDate(
+                                            record.visitDate ||
+                                                record.createdDate,
+                                        )}
+                                        patient={
+                                            record.patientName ?? "Patient"
+                                        }
+                                        type="In-Person"
+                                    />
+                                ))}
                             </div>
 
-                            <div className="p-4 text-center">
-                                <Link
-                                    to="/doctor/appointments"
-                                    className="text-sm text-emerald-400 hover:underline"
-                                >
-                                    View full schedule
-                                </Link>
-                            </div>
+                            {sortedAppointments.length >= 1 && (
+                                <div className="p-4 text-center">
+                                    <button
+                                        onClick={() => setShowAll(!showAll)}
+                                        className="text-sm text-emerald-400 hover:underline"
+                                    >
+                                        {showAll
+                                            ? "Show less"
+                                            : "View all appointments"}
+                                    </button>
+                                </div>
+                            )}
                         </section>
 
                         {/* Quick Actions */}
@@ -137,17 +221,24 @@ const StatCard = ({ icon: Icon, label, value }) => (
     </div>
 );
 
-const AppointmentRow = ({ time, patient, type }) => (
+const AppointmentRow = ({ record, time, patient, type }) => (
     <div className="flex items-center justify-between p-4 hover:bg-gray-800/50">
         <div>
             <p className="font-medium">{patient}</p>
             <p className="text-xs text-gray-400">{time}</p>
         </div>
-        <div className="flex items-center gap-2">
+
+        <div className="flex items-center gap-3">
             <span className="text-xs px-2 py-1 bg-gray-800 rounded-full">
                 {type}
             </span>
-            <Eye className="w-4 h-4 text-gray-400" />
+
+            <Link
+                to={`/doctor/appointments/${record.medicalRecordId}`}
+                className="text-xs px-3 py-1 bg-emerald-600 hover:bg-emerald-700 rounded-md"
+            >
+                View
+            </Link>
         </div>
     </div>
 );

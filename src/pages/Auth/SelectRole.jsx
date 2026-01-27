@@ -4,8 +4,8 @@ import React, { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { UserCircle, Stethoscope, Heart, CheckCircle } from "lucide-react";
 import { useNavigate } from "react-router";
-import { warmupService } from "@/utils/warmupService";
 import { toast } from "sonner";
+import { warmupAllServices } from "@/utils/warmupAllServices";
 
 export default function SelectRole() {
     const [role, setRole] = useState("");
@@ -33,11 +33,11 @@ export default function SelectRole() {
             }
 
             try {
-                await warmupService({ url: serviceUrl, label });
+                await warmupAllServices();
                 navigate(`/signup?role=${selectedRole}`);
             } catch {
                 toast.info(
-                    "Some issue from Render (free-tier). Please visit Github"
+                    "Some issue from Render (free-tier). Please visit Github",
                 );
             }
         }, 1000);

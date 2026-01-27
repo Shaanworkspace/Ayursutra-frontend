@@ -8,43 +8,40 @@ export async function warmupSingleService({
     url,
     dispatch,
     getState,
-    timeout = 130000,
+    timeout = 150000,
 }) {
     const currentStatus = getState().serviceStatus[service];
 
     if (currentStatus === "up" || currentStatus === "waking") {
         console.log(`[WARMUP] ${service} already ${currentStatus}, skipping`);
-        toast.info(`[WARMUP] ${service} already ${currentStatus}, skipping`);
+        // toast.info(`[WARMUP] ${service} already ${currentStatus}, skipping`);
         return true;
-    }
+    } else {
+        console.log(`[WARMUP] Checking ${service} service...`);
+        toast.info(`[WARMUP] Checking ${service} service...`);
+        dispatch(setServiceStatus({ service, status: "waking" }));
 
-    console.log(`[WARMUP] Checking ${service} service...`);
-    toast.info(`[WARMUP] Checking ${service} service...`);
-    dispatch(setServiceStatus({ service, status: "waking" }));
+        const start = Date.now();
 
-    const start = Date.now();
+        while (Date.now() - start < timeout) {
+            try {
+                await axios.get(url, { timeout: 130000 });
 
-    while (Date.now() - start < timeout) {
-        try {
-            await axios.get(url, { timeout: 120000 });
-
-            console.log(`${service} service is UP`);
-            toast.success(` ${service} service is UP`);
-            dispatch(setServiceStatus({ service, status: "up" }));
-            return true;
-        } catch (err) {
-            console.log(` ${service} not ready, retrying...`);
-            toast.warning(`${service} not ready, retrying...`);
-            await new Promise((r) => setTimeout(r, 8000));
+                console.log(`${service} service is UP`);
+                // toast.success(` ${service} service is UP`);
+                dispatch(setServiceStatus({ service, status: "up" }));
+                return true;
+            } catch (err) {
+                console.log(` ${service} not ready, retrying...`);
+                toast.warning(`${service} not ready, retrying...`);
+                await new Promise((r) => setTimeout(r, 180000));
+            }
         }
-    }
 
-    console.log(
-        `[WARMUP] ${service} FAILED to start within ${timeout / 1000}s`
-    );
-    toast.error(
-        `[WARMUP] ${service} FAILED to start within ${timeout / 1000}s`
-    );
-    dispatch(setServiceStatus({ service, status: "down" }));
-    return false;
+        console.log(
+            `[WARMUP] ${service} FAILED to start within ${timeout / 1000}s`,
+        );
+        dispatch(setServiceStatus({ service, status: "down" }));
+        return false;
+    }
 }
