@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { logout } from "@/Store/Slices/authSlice";
+import NotificationPanel from "@/components/common/NotificationPanel";
 
 export const PatientNavbar = () => {
     const { user } = useSelector((state) => state.auth);
@@ -65,21 +66,19 @@ export const PatientNavbar = () => {
                         <NavLink to="/patient/dashboard" icon={Calendar}>
                             Dashboard
                         </NavLink>
-                        <NavLink to="/patient/appointments" icon={Calendar}>
+                        <NavLink to="/patient/appointments" icon={Stethoscope}>
                             Appointments
                         </NavLink>
                         <NavLink to="/patient/health-records" icon={FileText}>
                             Records
                         </NavLink>
-                        <NavLink to="/patient/wellness" icon={Heart}>
-                            Wellness
-                        </NavLink>
 
                         {/* Notification */}
-                        <button className="relative p-2 rounded-lg hover:bg-white/20 dark:hover:bg-gray-800/60 transition">
-                            <Bell className="w-5 h-5 text-gray-200" />
-                            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
-                        </button>
+                        {/* Notification */}
+                        <NotificationPanel
+                            notifications={[]} // future: API se aayega
+                            hasUnread={false} // future: backend se aayega
+                        />
 
                         {/* Profile */}
                         <div className="relative ml-2">
@@ -117,7 +116,7 @@ export const PatientNavbar = () => {
                                     >
                                         My Profile
                                     </DropdownLink>
-                                    <DropdownLink
+                                    {/* <DropdownLink
                                         to="/patient/settings"
                                         icon={Settings}
                                         onClick={() =>
@@ -125,7 +124,7 @@ export const PatientNavbar = () => {
                                         }
                                     >
                                         Settings
-                                    </DropdownLink>
+                                    </DropdownLink> */}
 
                                     <button
                                         onClick={handleLogout}

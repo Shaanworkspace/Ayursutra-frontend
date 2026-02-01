@@ -1,7 +1,6 @@
 /* eslint-disable no-unused-vars */
 import React, { use, useEffect, useMemo, useState } from "react";
 import { PatientLayout } from "../components/PatientLayout";
-import { Sun, Moon } from "lucide-react";
 import {
     User,
     Phone,
@@ -51,16 +50,15 @@ const AppointmentDoctor = () => {
     const [location, setLocation] = useState("");
     const [selectDoctor, setSelectDoctor] = useState("");
     const [selectedDoctorId, setSelectedDoctorId] = useState("");
-    const [dark, setDark] = useState(
-        document.documentElement.classList.contains("dark"),
-    );
-    const toggleTheme = () => {
-        document.documentElement.classList.toggle("dark");
-        setDark(!dark);
-    };
+
+    // Set dark mode by default
+    useEffect(() => {
+        document.documentElement.classList.add("dark");
+    }, []);
 
     const patient = useMemo(() => {
         if (!user || !profile) return null;
+
         return {
             name: `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() || "",
             email: user.email ?? "",
@@ -80,15 +78,12 @@ const AppointmentDoctor = () => {
 
     const filteredDoctors = useMemo(() => {
         let result = doctors;
-
         if (specialist) {
             result = result.filter((doc) => doc.speciality === specialist);
         }
-
         if (location) {
             result = result.filter((doc) => doc.location === location);
         }
-
         return result;
     }, [doctors, specialist, location]);
 
@@ -98,19 +93,23 @@ const AppointmentDoctor = () => {
             toast.error("Please select a doctor");
             return;
         }
-
         if (!description) {
             toast.error("Please enter description");
             return;
         }
-
         if (!date) {
             toast.error("Please select a date");
             return;
         }
+
+        const selectedDoctor = doctors?.find(
+            (doc) => doc.userId == selectDoctor,
+        );
+
         const dataForAppointment = {
             patientId: patient?.patientId,
             doctorId: selectDoctor,
+            doctorName: selectedDoctor.name,
             visitDate: format(date, "yyyy-MM-dd"),
             symptoms: description,
         };
@@ -126,219 +125,241 @@ const AppointmentDoctor = () => {
                 },
             },
         );
+
         toast.success("Booked Appointment !!! ");
     };
 
     return (
         <PatientLayout>
-            <div className="p-6 lg:p-8 mt-20">
-                <div className="max-w-7xl mx-auto space-y-8">
+            <div className="pt-30 min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
+                <div className="max-w-7xl mx-auto">
                     {/* ================= HEADER ================= */}
-
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+                    <div className="mb-8">
+                        <div className="flex items-center justify-between mb-2">
+                            <h1 className="text-3xl font-bold text-white">
                                 Book Appointment
                             </h1>
-                            <p className="text-gray-600 dark:text-gray-400 mt-1">
-                                Fill appointment details and select doctor
-                            </p>
                         </div>
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={toggleTheme}
-                            className="size-14  rounded-4xl"
-                        >
-                            {dark ? (
-                                <Sun className="h-9 w-9 size-5" />
-                            ) : (
-                                <Moon className="h-9 w-9 size-5" />
-                            )}
-                        </Button>
+                        <p className="text-slate-400">
+                            Fill appointment details and select doctor
+                        </p>
                     </div>
 
                     {/* ================= PATIENT DETAILS ================= */}
-                    <div className="bg-white dark:bg-gray-900 rounded-2xl border p-6 space-y-4">
-                        <h2 className="text-lg font-semibold flex items-center gap-2">
-                            <User className="w-5 h-5 text-cyan-600" />
+                    <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 mb-6 border border-slate-700/50 shadow-xl">
+                        <h2 className="text-xl font-semibold mb-6 text-white flex items-center gap-2">
+                            <User className="w-5 h-5 text-cyan-400" />
                             Patient Details
                         </h2>
-
-                        <div className="grid sm:grid-cols-2 gap-4">
+                        <div className="grid sm:grid-cols-3 gap-4">
                             <ReadOnlyField
-                                label="Patient Name"
-                                value={patient.name}
+                                label="Full Name"
+                                value={patient?.name}
                             />
                             <ReadOnlyField
-                                label="Email"
-                                value={patient.email}
+                                label="Email Address"
+                                value={patient?.email}
                             />
                             <ReadOnlyField
-                                label="Phone"
-                                value={patient.phone}
-                            />
-                            <ReadOnlyField
-                                label="Patient ID"
-                                value={patient.patientId}
+                                label="Phone Number"
+                                value={patient?.phone}
                             />
                         </div>
                     </div>
 
                     {/* ================= APPOINTMENT DETAILS ================= */}
-                    <div className="bg-white dark:bg-gray-900 rounded-2xl border p-6 space-y-6">
-                        <h2 className="text-lg font-semibold flex items-center gap-2">
-                            <ClipboardList className="w-5 h-5 text-cyan-600" />
+                    <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 mb-6 border border-slate-700/50 shadow-xl">
+                        <h2 className="text-xl font-semibold mb-6 text-white flex items-center gap-2">
+                            <ClipboardList className="w-5 h-5 text-cyan-400" />
                             Appointment Details
                         </h2>
 
-                        {/* Description */}
-                        <div>
-                            <label className="block text-sm font-medium mb-2">
-                                Problem Description
-                            </label>
-                            <textarea
-                                rows={4}
-                                onChange={(e) => setDescription(e.target.value)}
-                                placeholder="Describe your symptoms or reason for visit"
-                                className="w-full px-4 py-3 rounded-xl border bg-gray-50 dark:bg-gray-800 focus:ring-2 focus:ring-cyan-500 outline-none"
-                            />
-                        </div>
-
-                        {/* Appointment Type */}
-                        <div className="grid sm:grid-cols-2 gap-6">
+                        <div className="space-y-6">
+                            {/* Description */}
                             <div>
-                                <label className="block text-sm font-medium mb-2">
-                                    Select Avaliability
+                                <label className="block text-sm font-medium mb-2 text-slate-300">
+                                    Problem Description
                                 </label>
-                                <Select onValueChange={setSpecialist}>
-                                    <SelectTrigger className="w-full">
-                                        <SelectValue placeholder="Select Specialist" />
+                                <textarea
+                                    rows="4"
+                                    value={description}
+                                    onChange={(e) =>
+                                        setDescription(e.target.value)
+                                    }
+                                    placeholder="Describe your symptoms or reason for visit"
+                                    className="w-full px-4 py-3 rounded-xl border border-slate-600 bg-slate-900/50 text-white placeholder-slate-500 focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none transition-all"
+                                />
+                            </div>
+
+                            {/* Appointment Type & Specialist */}
+                            <div className="grid sm:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 text-slate-300">
+                                        Select Availability
+                                    </label>
+                                    <Select onValueChange={setAppoitmentType}>
+                                        <SelectTrigger className="w-full bg-slate-900/50 border-slate-600 text-white">
+                                            <SelectValue placeholder="Select Availability" />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-slate-800 border-slate-700">
+                                            <SelectItem
+                                                value="In-Person"
+                                                className="text-white hover:bg-slate-700"
+                                            >
+                                                In-Person
+                                            </SelectItem>
+                                            <SelectItem
+                                                value="Online"
+                                                className="text-white hover:bg-slate-700"
+                                            >
+                                                Online
+                                            </SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 text-slate-300">
+                                        Select Specialist
+                                    </label>
+                                    <Select onValueChange={setSpecialist}>
+                                        <SelectTrigger className="w-full bg-slate-900/50 border-slate-600 text-white">
+                                            <SelectValue placeholder="Select Specialist" />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-slate-800 border-slate-700">
+                                            <SelectItem
+                                                value="General Physician"
+                                                className="text-white hover:bg-slate-700"
+                                            >
+                                                General Physician
+                                            </SelectItem>
+                                            <SelectItem
+                                                value="Cardiologist"
+                                                className="text-white hover:bg-slate-700"
+                                            >
+                                                Cardiologist
+                                            </SelectItem>
+                                            <SelectItem
+                                                value="Dermatologist"
+                                                className="text-white hover:bg-slate-700"
+                                            >
+                                                Dermatologist
+                                            </SelectItem>
+                                            <SelectItem
+                                                value="Orthopedic"
+                                                className="text-white hover:bg-slate-700"
+                                            >
+                                                Orthopedic
+                                            </SelectItem>
+                                            <SelectItem
+                                                value="Neurologist"
+                                                className="text-white hover:bg-slate-700"
+                                            >
+                                                Neurologist
+                                            </SelectItem>
+                                            <SelectItem
+                                                value="Pediatrician"
+                                                className="text-white hover:bg-slate-700"
+                                            >
+                                                Pediatrician
+                                            </SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+
+                            {/* Doctor Selection */}
+                            <div>
+                                <label className="block text-sm font-medium mb-2 text-slate-300">
+                                    Select Doctor
+                                </label>
+                                <Select onValueChange={setSelectDoctor}>
+                                    <SelectTrigger className="w-full bg-slate-900/50 border-slate-600 text-white">
+                                        <SelectValue placeholder="Select Doctor" />
                                     </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="In-Person">
-                                            In-Person
-                                        </SelectItem>
-                                        <SelectItem value="Online">
-                                            Online
-                                        </SelectItem>
+                                    <SelectContent className="bg-slate-800 border-slate-700">
+                                        {filteredDoctors.map((doc) => (
+                                            <SelectItem
+                                                key={doc.userId}
+                                                value={doc.userId}
+                                                className="text-white hover:bg-slate-700"
+                                            >
+                                                {doc.name}
+                                            </SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                             </div>
 
-                            <div>
-                                <label className="block text-sm font-medium mb-2">
-                                    Select Specialist
-                                </label>
-                                <Select onValueChange={setSpecialist}>
-                                    <SelectTrigger className="w-full">
-                                        <SelectValue placeholder="Select Specialist" />
-                                    </SelectTrigger>
+                            {/* Date & Time */}
+                            <div className="grid sm:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 text-slate-300">
+                                        Appointment Date
+                                    </label>
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <Button
+                                                variant="outline"
+                                                className="w-full justify-start text-left font-normal bg-slate-900/50 border-slate-600 text-white hover:bg-slate-800 hover:text-white"
+                                            >
+                                                <CalendarIcon className="mr-2 h-4 w-4 text-cyan-400" />
+                                                {date
+                                                    ? format(date, "yyyy-MM-dd")
+                                                    : "Pick a date"}
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0 bg-slate-800 border-slate-700">
+                                            <ShadcnCalendar
+                                                mode="single"
+                                                selected={date}
+                                                onSelect={setDate}
+                                                disabled={(day) =>
+                                                    day < new Date()
+                                                }
+                                                initialFocus
+                                                className="text-white"
+                                            />
+                                        </PopoverContent>
+                                    </Popover>
+                                </div>
 
-                                    <SelectContent>
-                                        <SelectItem value="General Physician">
-                                            General Physician
-                                        </SelectItem>
-                                        <SelectItem value="Cardiologist">
-                                            Cardiologist
-                                        </SelectItem>
-                                        <SelectItem value="Dermatologist">
-                                            Dermatologist
-                                        </SelectItem>
-                                        <SelectItem value="Orthopedic">
-                                            Orthopedic
-                                        </SelectItem>
-                                        <SelectItem value="Neurologist">
-                                            Neurologist
-                                        </SelectItem>
-                                        <SelectItem value="Pediatrician">
-                                            Pediatrician
-                                        </SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </div>
-
-                        {/* Doctor Selection */}
-                        <div>
-                            <label className="block text-sm font-medium mb-2">
-                                Select Doctor
-                            </label>
-                            <Select onValueChange={setSelectDoctor}>
-                                <SelectTrigger className="w-full">
-                                    <SelectValue placeholder="Select Doctor" />
-                                </SelectTrigger>
-
-                                <SelectContent>
-                                    {filteredDoctors.map((doc) => (
-                                        <SelectItem
-                                            key={doc.userId}
-                                            value={doc.userId}
-                                        >
-                                            {doc.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        {/* Date & Time */}
-                        <div className="grid sm:grid-cols-2 gap-6">
-                            <div>
-                                <label className="block text-sm font-medium mb-2">
-                                    Appointment Date
-                                </label>
-
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                        <Button
-                                            variant="outline"
-                                            className="w-full justify-start text-left font-normal"
-                                        >
-                                            <CalendarIcon className="mr-2 h-4 w-4" />
-                                            {date
-                                                ? format(date, "yyyy-MM-dd")
-                                                : "Pick a date"}
-                                        </Button>
-                                    </PopoverTrigger>
-
-                                    <PopoverContent className="w-auto p-0">
-                                        <ShadcnCalendar
-                                            mode="single"
-                                            selected={date}
-                                            onSelect={setDate}
-                                            disabled={(day) => day < new Date()}
-                                            initialFocus
-                                        />
-                                    </PopoverContent>
-                                </Popover>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium mb-2">
-                                    Time Slot
-                                </label>
-
-                                <Select onValueChange={setTime}>
-                                    <SelectTrigger className="w-full">
-                                        <SelectValue placeholder="Select time slot" />
-                                    </SelectTrigger>
-
-                                    <SelectContent>
-                                        <SelectItem value="09:00">
-                                            09:00 AM - 09:30 AM
-                                        </SelectItem>
-                                        <SelectItem value="10:00">
-                                            10:00 AM - 10:30 AM
-                                        </SelectItem>
-                                        <SelectItem value="11:00">
-                                            11:00 AM - 11:30 AM
-                                        </SelectItem>
-                                        <SelectItem value="14:00">
-                                            02:00 PM - 02:30 PM
-                                        </SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 text-slate-300">
+                                        Time Slot
+                                    </label>
+                                    <Select onValueChange={setTime}>
+                                        <SelectTrigger className="w-full bg-slate-900/50 border-slate-600 text-white">
+                                            <SelectValue placeholder="Select time slot" />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-slate-800 border-slate-700">
+                                            <SelectItem
+                                                value="09:00"
+                                                className="text-white hover:bg-slate-700"
+                                            >
+                                                09:00 AM - 09:30 AM
+                                            </SelectItem>
+                                            <SelectItem
+                                                value="10:00"
+                                                className="text-white hover:bg-slate-700"
+                                            >
+                                                10:00 AM - 10:30 AM
+                                            </SelectItem>
+                                            <SelectItem
+                                                value="11:00"
+                                                className="text-white hover:bg-slate-700"
+                                            >
+                                                11:00 AM - 11:30 AM
+                                            </SelectItem>
+                                            <SelectItem
+                                                value="14:00"
+                                                className="text-white hover:bg-slate-700"
+                                            >
+                                                02:00 PM - 02:30 PM
+                                            </SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -346,7 +367,7 @@ const AppointmentDoctor = () => {
                     {/* ================= ACTION ================= */}
                     <div className="flex justify-end">
                         <Button
-                            className="bg-cyan-600 hover:bg-cyan-700 px-8"
+                            className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white px-8 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
                             onClick={handleBookAppointment}
                         >
                             Book Appointment
@@ -359,11 +380,12 @@ const AppointmentDoctor = () => {
 };
 
 /* ================= REUSABLE UI COMPONENTS ================= */
-
 const ReadOnlyField = ({ label, value }) => (
     <div>
-        <label className="block text-sm font-medium mb-1">{label}</label>
-        <div className="px-4 py-3 bg-gray-100 dark:bg-gray-800 rounded-xl">
+        <label className="block text-sm font-medium mb-1 text-slate-400">
+            {label}
+        </label>
+        <div className="px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white">
             {value}
         </div>
     </div>
@@ -371,8 +393,10 @@ const ReadOnlyField = ({ label, value }) => (
 
 const SelectField = ({ label, options }) => (
     <div>
-        <label className="block text-sm font-medium mb-2">{label}</label>
-        <select className="w-full px-4 py-3 rounded-xl border bg-gray-50 dark:bg-gray-800 focus:ring-2 focus:ring-cyan-500 outline-none">
+        <label className="block text-sm font-medium mb-2 text-slate-300">
+            {label}
+        </label>
+        <select className="w-full px-4 py-3 rounded-xl border border-slate-600 bg-slate-900/50 text-white focus:ring-2 focus:ring-cyan-500 outline-none">
             <option>Select {label}</option>
             {options.map((opt, idx) => (
                 <option key={idx}>{opt}</option>

@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars */
-import React, { useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
     Calendar,
     FileText,
@@ -48,18 +48,151 @@ export default function PatientDashboard() {
     const lname = user?.lastName || "";
     const email = user?.email || "";
     const authUserId = user?.userId || user?.email;
+    const [medicalRecords, setMedicalRecords] = useState([]);
+    const [loadingRecords, setLoadingRecords] = useState(true);
+    const [showAllAppointments, setShowAllAppointments] = useState(false);
+
+    const sortedAppointments = [...medicalRecords].sort(
+        (a, b) => new Date(b.createdDate) - new Date(a.createdDate),
+    );
+
+    const visibleAppointments = showAllAppointments
+        ? sortedAppointments
+        : sortedAppointments.slice(0, 3);
+
+    const today = new Date();
+
+    const upcomingSessions = medicalRecords.filter((r) => {
+        if (!r.visitDate) return false;
+        return new Date(r.visitDate) >= today;
+    }).length;
+
+    const completedSessions = medicalRecords.filter((r) => {
+        if (!r.visitDate) return false;
+        return new Date(r.visitDate) < today;
+    }).length;
+
+    const healthReports = medicalRecords.length;
+
+    const calculateWellnessScore = () => {
+        let score = 10;
+
+        medicalRecords.forEach((r) => {
+            if (r.needTherapy) score -= 1;
+            if (r.followUpRequired) score -= 0.5;
+            if (Array.isArray(r.therapies) && r.therapies.length > 0)
+                score += 0.5;
+        });
+
+        if (score < 0) score = 0;
+        if (score > 10) score = 10;
+
+        return score.toFixed(1);
+    };
+
+    const wellnessScore = calculateWellnessScore();
+
+    const fetchMedicalRecords = useCallback(async () => {
+        if (!auth.token || !authUserId) return;
+
+        setLoadingRecords(true);
+
+        try {
+            const res = await axios.get(
+                `${gateway}/api/patients/all/medical-records/${profile?.userId}`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${auth.token}`,
+                    },
+                },
+            );
+            console.log("Appointments : ", res.data);
+
+            setMedicalRecords(res.data || []);
+        } catch (err) {
+            console.error("Failed to fetch medical records", err);
+            setMedicalRecords([]);
+        } finally {
+            setLoadingRecords(false);
+        }
+    }, [auth.token, authUserId]);
+
     useEffect(() => {
-        if (!auth.token || !user) return;
+        fetchMedicalRecords();
+    }, [fetchMedicalRecords]);
 
-        const profileUserId = profile?.email;
-        const authUserId = user?.email;
+    const PatientAppointmentRow = ({ record }) => {
+        const date = record.visitDate || record.createdDate;
 
-        const shouldFetch =
-            profileUserId !== authUserId ||
-            reduxProfileRole?.toLowerCase() !== roleU?.toLowerCase();
+        const time = date
+            ? new Date(date).toLocaleDateString("en-IN", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+              })
+            : "Not Scheduled";
 
+        const isTherapy = record.needTherapy === true;
+
+        const title = isTherapy ? "Therapy Session" : "Doctor Consultation";
+
+        console.log("reco : ", record);
+        const name =
+            record.therapistPlans?.length > 0
+                ? "Therapist Consultation"
+                : record.needTherapy
+                  ? "Doctor Checked"
+                  : "Waiting For Doctor Review";
+
+        const mode = "video"; // future me backend se aayega
+
+        return (
+            <div className="flex items-center justify-between p-4 hover:bg-gray-800/50 rounded-xl">
+                <div>
+                    <p className="font-medium">{name}</p>
+
+                    <p className="text-xs text-gray-400">{title}</p>
+
+                    <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
+                        <Clock className="w-3 h-3" />
+                        {time}
+                    </p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                    <span className="text-xs px-2 py-1 bg-gray-800 rounded-full flex items-center gap-1">
+                        {mode === "video" ? (
+                            <>
+                                <Video className="w-3 h-3" />
+                                Video
+                            </>
+                        ) : (
+                            <>
+                                <MapPin className="w-3 h-3" />
+                                In-person
+                            </>
+                        )}
+                    </span>
+
+                    <Link
+                        to={`/patient/medical-records/${record.medicalRecordId}`}
+                        className="text-xs px-3 py-1 bg-cyan-600 hover:bg-cyan-700 rounded-md"
+                    >
+                        View
+                    </Link>
+                </div>
+            </div>
+        );
+    };
+
+    const profileUserId = profile?.email;
+
+    const shouldFetch =
+        profileUserId !== authUserId ||
+        reduxProfileRole?.toLowerCase() !== roleU?.toLowerCase();
+
+    const fetchPatientProfile = () => {
         if (!shouldFetch) return;
-
         axios
             .get(`${gateway}/api/patients/profile/me`, {
                 headers: {
@@ -77,7 +210,11 @@ export default function PatientDashboard() {
             .catch((error) => {
                 console.error("Error fetching patient profile:", error);
             });
-    }, [auth.token, user, profile?.userId, reduxProfileRole, dispatch]);
+    };
+
+    useEffect(() => {
+        fetchPatientProfile();
+    }, [shouldFetch]);
 
     if (!profile) {
         return (
@@ -114,10 +251,22 @@ export default function PatientDashboard() {
 
                     {/* ================= QUICK STATS ================= */}
                     <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <StatCard title="Upcoming Sessions" value="3" />
-                        <StatCard title="Completed Sessions" value="12" />
-                        <StatCard title="Health Reports" value="8" />
-                        <StatCard title="Wellness Score" value="8.5 / 10" />
+                        <StatCard
+                            title="Upcoming Sessions"
+                            value={upcomingSessions}
+                        />
+                        <StatCard
+                            title="Completed Sessions"
+                            value={completedSessions}
+                        />
+                        <StatCard
+                            title="Health Reports"
+                            value={healthReports}
+                        />
+                        <StatCard
+                            title="Wellness Score"
+                            value={`${wellnessScore} / 10`}
+                        />
                     </div>
 
                     {/* ================= MAIN GRID ================= */}
@@ -126,25 +275,48 @@ export default function PatientDashboard() {
                         <div className="lg:col-span-2 space-y-6">
                             {/* Appointments */}
                             <Card title="Appointments">
-                                <AppointmentItem
-                                    name="Dr. Amita Sharma"
-                                    type="Video Consultation"
-                                    time="10:00 AM – 11:00 AM"
-                                    mode="video"
-                                />
-                                <AppointmentItem
-                                    name="Therapist Priya Mehta"
-                                    type="Yoga Therapy"
-                                    time="2:00 PM – 3:00 PM"
-                                    mode="inperson"
-                                />
-                                <Link
-                                    to="#"
-                                    className="flex justify-center items-center gap-2 text-sm text-cyan-400 hover:underline mt-4"
+                                {visibleAppointments.length === 0 && (
+                                    <p className="text-sm text-gray-400">
+                                        No appointments found
+                                    </p>
+                                )}
+
+                                <div
+                                    className={
+                                        showAllAppointments
+                                            ? "max-h-[420px] overflow-y-auto space-y-2 pr-2"
+                                            : "space-y-2"
+                                    }
                                 >
-                                    View all
-                                    <ArrowRight className="w-4 h-4" />
-                                </Link>
+                                    {visibleAppointments.map((record) => (
+                                        <PatientAppointmentRow
+                                            key={record.medicalRecordId}
+                                            record={record}
+                                        />
+                                    ))}
+                                </div>
+
+                                {sortedAppointments.length > 3 && (
+                                    <button
+                                        onClick={() =>
+                                            setShowAllAppointments(
+                                                (prev) => !prev,
+                                            )
+                                        }
+                                        className="flex justify-center items-center gap-2 text-sm text-cyan-400 hover:underline mt-4 w-full"
+                                    >
+                                        {showAllAppointments
+                                            ? "Show Less"
+                                            : "View All"}
+                                        <ArrowRight
+                                            className={`w-4 h-4 transition-transform ${
+                                                showAllAppointments
+                                                    ? "rotate-90"
+                                                    : ""
+                                            }`}
+                                        />
+                                    </button>
+                                )}
                             </Card>
 
                             {/* Wellness Tips */}
@@ -206,7 +378,7 @@ export default function PatientDashboard() {
                                     <Activity className="w-6 h-6 opacity-80" />
                                 </div>
                                 <p className="text-5xl font-bold">
-                                    8.5
+                                    {wellnessScore}
                                     <span className="text-xl opacity-70">
                                         /10
                                     </span>

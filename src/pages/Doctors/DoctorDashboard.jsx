@@ -59,6 +59,16 @@ export default function DoctorDashboard() {
 
     const gateway = import.meta.env.VITE_API_GATEWAY_BASE_URL;
     const doctorFName = user?.firstName || "Doctor";
+    const today = new Date();
+
+    const totalAppointments = appointments?.length;
+
+    const uniquePatients = new Set(appointments?.map((r) => r.patientId)).size;
+
+    const activeTreatments = appointments?.filter(
+        (r) => r.needTherapy === true,
+    ).length;
+    const earnings = totalAppointments * 1500;
 
     useEffect(() => {
         if (!auth.token || !user) return;
@@ -108,19 +118,30 @@ export default function DoctorDashboard() {
                     <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <StatCard
                             icon={Calendar}
-                            label="Appointments"
-                            value="12"
+                            label="Total Appointments"
+                            value={totalAppointments}
+                            accent="emerald"
                         />
-                        <StatCard icon={Users} label="Patients" value="128" />
+
+                        <StatCard
+                            icon={Users}
+                            label="Patients Treated"
+                            value={uniquePatients}
+                            accent="cyan"
+                        />
+
                         <StatCard
                             icon={Activity}
                             label="Active Treatments"
-                            value="34"
+                            value={activeTreatments}
+                            accent="purple"
                         />
+
                         <StatCard
                             icon={Wallet}
-                            label="Earnings"
-                            value="₹45,000"
+                            label="Estimated Earnings"
+                            value={`₹${earnings.toLocaleString("en-IN")}`}
+                            accent="yellow"
                         />
                     </section>
 
@@ -155,7 +176,11 @@ export default function DoctorDashboard() {
                                         patient={
                                             record.patientName ?? "Patient"
                                         }
-                                        type="In-Person"
+                                        type={
+                                            record.needTherapy
+                                                ? "Therapy Session"
+                                                : "Consultation"
+                                        }
                                     />
                                 ))}
                             </div>
@@ -207,19 +232,29 @@ export default function DoctorDashboard() {
 
 /* ---------------- Small Components ---------------- */
 
-const StatCard = ({ icon: Icon, label, value }) => (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-        <div className="flex items-center gap-3">
-            <div className="p-2 bg-emerald-600/20 rounded-lg">
-                <Icon className="w-5 h-5 text-emerald-400" />
-            </div>
-            <div>
-                <p className="text-sm text-gray-400">{label}</p>
-                <p className="text-xl font-bold">{value}</p>
+const StatCard = ({ icon: Icon, label, value, accent }) => {
+    const accentMap = {
+        emerald: "text-emerald-400 bg-emerald-500/15",
+        cyan: "text-cyan-400 bg-cyan-500/15",
+        purple: "text-purple-400 bg-purple-500/15",
+        yellow: "text-yellow-400 bg-yellow-500/15",
+    };
+
+    return (
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 hover:border-gray-700 transition">
+            <div className="flex items-center gap-4">
+                <div className={`p-3 rounded-xl ${accentMap[accent]}`}>
+                    <Icon className="w-6 h-6" />
+                </div>
+
+                <div>
+                    <p className="text-sm text-gray-400">{label}</p>
+                    <p className="text-2xl font-bold mt-1">{value}</p>
+                </div>
             </div>
         </div>
-    </div>
-);
+    );
+};
 
 const AppointmentRow = ({ record, time, patient, type }) => (
     <div className="flex items-center justify-between p-4 hover:bg-gray-800/50">

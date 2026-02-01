@@ -17,8 +17,18 @@ import OAuthCallback from "@/pages/Auth/OAuthCallback";
 import UnderReviewPage from "@/pages/Auth/UnderReviewPage";
 import RejectedPage from "@/pages/Auth/RejectedPage";
 import DoctorAppointmentDetail from "@/pages/Doctors/components/DoctorAppointmentDetail";
-import TherapistSessionDetail from "@/pages/Therapists/components/TherapistSessionDetail";
+import TherapistSessionDetail from "@/pages/Therapists/Page/TherapistSessionDetail";
 import TherapistSchedule from "@/pages/Therapists/SlotsComponents/TherapistSchedule";
+import PatientMedicalRecordDetail from "@/pages/Patients/Pages/PatientMedicalRecordDetail";
+import PatientAppointments from "@/pages/Patients/Pages/PatientAppointments";
+import PatientHealthRecords from "@/pages/Patients/Pages/PatientHealthRecords";
+import NotFound from "@/components/common/NotFound";
+import DoctorAppointments from "@/pages/Doctors/Pages/DoctorAppointments";
+import DoctorPatients from "@/pages/Doctors/Pages/DoctorPatients";
+import DoctorPatientDetail from "@/pages/Doctors/Pages/DoctorPatientDetail";
+import TherapistSessions from "@/pages/Therapists/Page/TherapistSessions";
+import TherapistSessionNotes from "@/pages/Therapists/Page/TherapistSessionNotes";
+import TherapistClientProfile from "@/pages/Therapists/Page/TherapistClientProfile";
 
 export default function AppRoutes() {
     return (
@@ -34,6 +44,8 @@ export default function AppRoutes() {
                 <Route path="/signup" element={<SignupPage />} />
                 <Route path="/under-review" element={<UnderReviewPage />} />
                 <Route path="/rejected" element={<RejectedPage />} />
+                {/* fallback – ALWAYS LAST */}
+                <Route path="*" element={<NotFound />} />
 
                 {/* Doctor */}
                 <Route
@@ -49,6 +61,30 @@ export default function AppRoutes() {
                     element={
                         <ProtectedRoute role="DOCTOR">
                             <DoctorProfile />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/doctor/appointments"
+                    element={
+                        <ProtectedRoute role="DOCTOR">
+                            <DoctorAppointments />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/doctor/patients/:patientId"
+                    element={
+                        <ProtectedRoute role="DOCTOR">
+                            <DoctorPatientDetail />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/doctor/patients"
+                    element={
+                        <ProtectedRoute role="DOCTOR">
+                            <DoctorPatients />
                         </ProtectedRoute>
                     }
                 />
@@ -86,6 +122,30 @@ export default function AppRoutes() {
                         </ProtectedRoute>
                     }
                 />
+                <Route
+                    path="/patient/medical-records/:id"
+                    element={
+                        <ProtectedRoute role="PATIENT">
+                            <PatientMedicalRecordDetail />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/patient/appointments"
+                    element={
+                        <ProtectedRoute role="PATIENT">
+                            <PatientAppointments />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/patient/health-records"
+                    element={
+                        <ProtectedRoute role="PATIENT">
+                            <PatientHealthRecords />
+                        </ProtectedRoute>
+                    }
+                />
 
                 {/* Therapist */}
                 <Route
@@ -105,6 +165,23 @@ export default function AppRoutes() {
                     }
                 />
                 <Route
+                    path="/therapist/sessions"
+                    element={
+                        <ProtectedRoute role="THERAPIST">
+                            <TherapistSessions />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/therapist/sessions/:id/notes"
+                    element={
+                        <ProtectedRoute role="THERAPIST">
+                            <TherapistSessionNotes />
+                        </ProtectedRoute>
+                    }
+                />
+
+                <Route
                     path="/therapist/sessions/:id"
                     element={
                         <ProtectedRoute role="THERAPIST">
@@ -112,6 +189,15 @@ export default function AppRoutes() {
                         </ProtectedRoute>
                     }
                 />
+                <Route
+                    path="/therapist/clients/:patientId"
+                    element={
+                        <ProtectedRoute role="THERAPIST">
+                            <TherapistClientProfile />
+                        </ProtectedRoute>
+                    }
+                />
+
                 <Route
                     path="/therapist/schedule"
                     element={

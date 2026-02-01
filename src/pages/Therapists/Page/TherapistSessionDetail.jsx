@@ -28,7 +28,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
-import TherapistNavbar from "./TherapistNavbar";
+import TherapistNavbar from "../components/TherapistNavbar";
 import PatientFooter from "@/pages/Home/components/Footer";
 
 const THERAPY_TYPES = [
@@ -49,49 +49,65 @@ export default function TherapistSessionDetail() {
     const auth = useSelector((state) => state.auth);
     const [isEditing, setIsEditing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
-
+    const reduxProfile = useSelector((state) => state.profile.data);
+    const storedProfile = localStorage.getItem("profile");
     const [record, setRecord] = useState(location.state?.record || null);
+
+    const profile = storedProfile
+        ? JSON.parse(storedProfile).data
+        : reduxProfile;
+    const gateway = import.meta.env.VITE_API_GATEWAY_BASE_URL;
     const [editedData, setEditedData] = useState({
         needTherapy: record?.needTherapy || false,
         therapies: record?.therapies || [],
         therapistNotes: record?.therapistNotes || "",
     });
+    const fetchRecord = async () => {
+        try {
+            const res = await api.get(
+                `${gateway}/api/patients/medical-records/${id}`,
+                {
+                    headers: { Authorization: `Bearer ${auth.token}` },
+                },
+            );
+
+            console.log("Fetched record from server:", res.data);
+
+            setRecord(res.data);
+            setEditedData({
+                needTherapy: res.data.needTherapy || false,
+                therapies: res.data.therapies || [],
+                therapistNotes: res.data.therapistNotes || "",
+            });
+        } catch (err) {
+            console.error("Failed to fetch record", err);
+        }
+    };
 
     useEffect(() => {
         if (record) return;
-        const fetchRecord = async () => {
-            try {
-                const res = await api.get(
-                    `/api/patients/medical-records/${id}`,
-                    {
-                        headers: { Authorization: `Bearer ${auth.token}` },
-                    },
-                );
-                setRecord(res.data);
-                setEditedData({
-                    needTherapy: res.data.needTherapy || false,
-                    therapies: res.data.therapies || [],
-                    therapistNotes: res.data.therapistNotes || "",
-                });
-            } catch (err) {
-                console.error("Failed to fetch record", err);
-            }
-        };
         fetchRecord();
     }, [id, record, auth.token]);
 
     const handleSave = async () => {
         setIsSaving(true);
         try {
-            await api.put(
-                `/api/patients/medical-records/${id}/therapist-update`,
+            console.log("sending a update to medical record as :", editedData);
+            const response = await api.put(
+                `${gateway}/api/patients/medical-records/${id}/therapist-update`,
                 editedData,
                 { headers: { Authorization: `Bearer ${auth.token}` } },
             );
-            setRecord((prev) => ({ ...prev, ...editedData }));
+            console.log("Response from server:", response);
+            console.log("Data returned by server:", response.data);
+
+            await fetchRecord();
             setIsEditing(false);
         } catch (error) {
             console.error("Failed to save:", error);
+            if (error.response) {
+                console.error("Server error data:", error.response.data);
+            }
         } finally {
             setIsSaving(false);
         }
@@ -233,16 +249,16 @@ export default function TherapistSessionDetail() {
                         <div className="grid grid-cols-3 gap-4">
                             <InfoBox
                                 icon={User}
-                                label="Patient ID"
-                                value={record.patientId}
+                                label="Patient Name"
+                                value={record.patientName}
                                 gradient="from-violet-500/20 to-purple-500/20"
                                 iconColor="text-violet-400"
                                 borderColor="border-violet-500/30"
                             />
                             <InfoBox
                                 icon={Stethoscope}
-                                label="Therapist"
-                                value={record.therapistId || "Not Assigned"}
+                                label="Therapist Name"
+                                value={profile.therapistName || "Not Assigned"}
                                 gradient="from-blue-500/20 to-cyan-500/20"
                                 iconColor="text-blue-400"
                                 borderColor="border-blue-500/30"

@@ -67,24 +67,13 @@ export default function DoctorAppointmentDetail() {
     console.log("token :", auth.token);
     console.log(reduxProfileRole, " : ", profile);
     console.log(roleU, " :  ", user);
-    useEffect(() => {
-        axios
-            .get(`${gateway}/api/therapists`, {
-                headers: {
-                    Authorization: `Bearer ${auth.token}`,
-                },
-            })
-            .then((res) => {
-                console.log("Therapists : ", res.data);
-                setTherapist(res.data);
-            });
-    }, []);
+
     useEffect(() => {
         if (record) return;
         const fetchRecord = async () => {
             try {
                 const res = await api.get(
-                    `/api/patients/medical-records/${id}`,
+                    `${gateway}/api/patients/medical-records/${id}`,
                     {
                         headers: {
                             Authorization: `Bearer ${auth.token}`,
@@ -105,8 +94,6 @@ export default function DoctorAppointmentDetail() {
             prescribedTreatment: record.prescribedTreatment || "",
             medications: record.medications || "",
             needTherapy: record.needTherapy || false,
-            therapistId: record.therapistId || "",
-            followUpRequired: "",
         });
         setIsEditing(true);
     };
@@ -121,7 +108,7 @@ export default function DoctorAppointmentDetail() {
         try {
             console.log("Going to edit medical record: ", editedData);
             const res = await api.put(
-                `/api/patients/medical-records/edit/${id}`,
+                `${gateway}/api/patients/medical-records/edit/${id}`,
                 editedData,
                 {
                     headers: {
@@ -164,7 +151,7 @@ export default function DoctorAppointmentDetail() {
     return (
         <DoctorLayout>
             <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 p-6 pt-28">
-                <div className="max-w-6xl mx-auto space-y-6">
+                <div className="max-w-7xl mx-auto space-y-6">
                     {/* Header with Back Button and Edit */}
                     <div className="flex items-center justify-between">
                         <Link
@@ -241,24 +228,24 @@ export default function DoctorAppointmentDetail() {
                             <div className="grid md:grid-cols-3 gap-6">
                                 <div className="space-y-2 p-4 rounded-lg bg-gray-950/50 border border-gray-700">
                                     <p className="text-sm text-gray-400 uppercase tracking-wide">
-                                        Patient ID
+                                        Patient Name
                                     </p>
                                     <p className="text-lg font-bold text-white">
-                                        {record.patientId}
+                                        {record.patientName}
                                     </p>
                                 </div>
                                 <div className="space-y-2 p-4 rounded-lg bg-gray-950/50 border border-gray-700">
                                     <p className="text-sm text-gray-400 uppercase tracking-wide">
-                                        Doctor ID
+                                        Doctor Name
                                     </p>
                                     <p className="text-lg font-bold text-white">
-                                        {record.doctorId}
+                                        {profile.name}
                                     </p>
                                 </div>
                                 <div className="space-y-2 p-4 rounded-lg bg-gray-950/50 border border-gray-700">
                                     <p className="text-sm text-gray-400 uppercase tracking-wide flex items-center gap-1">
                                         <Calendar className="w-4 h-4" />
-                                        Visit Date
+                                        Visiting Date
                                     </p>
                                     <p className="text-lg font-bold text-white">
                                         {formatDate(
@@ -291,26 +278,12 @@ export default function DoctorAppointmentDetail() {
                                 </div>
                             </CardHeader>
                             <CardContent>
-                                {isEditing ? (
-                                    <Textarea
-                                        value={editedData.symptoms}
-                                        onChange={(e) =>
-                                            handleChange(
-                                                "symptoms",
-                                                e.target.value,
-                                            )
-                                        }
-                                        className="min-h-[140px] bg-gray-950 border-gray-600 text-white placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500/20"
-                                        placeholder="Enter symptoms..."
-                                    />
-                                ) : (
-                                    <div className="min-h-[140px] p-4 rounded-lg bg-gray-950/50 border border-gray-700">
-                                        <p className="text-gray-200 leading-relaxed text-base">
-                                            {record.symptoms ||
-                                                "No symptoms provided"}
-                                        </p>
-                                    </div>
-                                )}
+                                <div className="min-h-[140px] p-4 rounded-lg bg-gray-950/50 border border-gray-700">
+                                    <p className="text-gray-200 leading-relaxed text-base">
+                                        {record.symptoms ||
+                                            "No symptoms provided"}
+                                    </p>
+                                </div>
                             </CardContent>
                         </Card>
 
@@ -436,49 +409,6 @@ export default function DoctorAppointmentDetail() {
                                             Patient needs therapy
                                         </Label>
                                     </div>
-
-                                    {editedData.needTherapy && (
-                                        <div className="space-y-3">
-                                            <Label className="text-base text-white">
-                                                Assign Therapist
-                                            </Label>
-
-                                            <Select
-                                                value={
-                                                    editedData.therapistId || ""
-                                                }
-                                                onValueChange={(value) =>
-                                                    handleChange(
-                                                        "therapistId",
-                                                        value,
-                                                    )
-                                                }
-                                            >
-                                                <SelectTrigger className="bg-gray-950 border-gray-600 text-white h-12 focus:border-purple-500 focus:ring-purple-500/20">
-                                                    <SelectValue placeholder="Select therapist..." />
-                                                </SelectTrigger>
-
-                                                <SelectContent className="bg-gray-900 border-gray-700 text-white">
-                                                    {therapist.length === 0 && (
-                                                        <div className="px-3 py-2 text-sm text-gray-400">
-                                                            No therapists
-                                                            available
-                                                        </div>
-                                                    )}
-
-                                                    {therapist.map((t) => (
-                                                        <SelectItem
-                                                            key={t.userId}
-                                                            value={t.userId}
-                                                            className="focus:bg-purple-600 focus:text-white"
-                                                        >
-                                                            {t.therapistName}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                    )}
                                 </div>
                             ) : (
                                 <div className="grid md:grid-cols-2 gap-6">
@@ -506,10 +436,10 @@ export default function DoctorAppointmentDetail() {
                                     </div>
                                     <div className="space-y-3 p-4 rounded-lg bg-gray-950/50 border border-gray-700">
                                         <p className="text-sm text-gray-400 uppercase tracking-wide">
-                                            Therapist Assigned
+                                            Therapist Name
                                         </p>
                                         <p className="text-lg font-bold text-white">
-                                            {record.therapistId ||
+                                            {record.therapistName ||
                                                 "Not Assigned"}
                                         </p>
                                     </div>

@@ -18,6 +18,17 @@ import {
 } from "lucide-react";
 import TherapistNavbar from "./components/TherapistNavbar";
 import { Button } from "@/components/ui/button";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import PatientFooter from "../Home/components/Footer";
 import axios from "axios";
 import { setProfile } from "@/Store/Slices/profileSlice";
@@ -41,16 +52,47 @@ export default function TherapistDashboard() {
     const user = storedUser ? JSON.parse(storedUser) : reduxUser;
     const roleU = localStorage.getItem("role") || reduxRole;
 
-    const sessions = Array.isArray(profile?.medicalRecords)
-        ? profile.medicalRecords
-        : [];
+    const [medicalRecords, setMedicalRecords] = useState([]);
+    const [loadingRecords, setLoadingRecords] = useState(true);
+    const sessions = medicalRecords;
+
+    useEffect(() => {
+        if (!auth.token || !profile?.userId) return;
+        let isMounted = true;
+        axios
+            .get(
+                `${gateway}/api/therapists/medical-records/${profile.userId}`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${auth.token}`,
+                    },
+                },
+            )
+            .then((res) => {
+                if (isMounted) {
+                    setMedicalRecords(res.data || []);
+                }
+            })
+            .catch((err) => {
+                console.error("Failed to fetch medical records", err);
+                if (isMounted) {
+                    setMedicalRecords([]);
+                }
+            })
+            .finally(() => {
+                if (isMounted) {
+                    setLoadingRecords(false);
+                }
+            });
+
+        return () => {
+            isMounted = false;
+        };
+    }, [profile?.userId, auth.token]);
 
     const sortedSessions = [...sessions].sort(
         (a, b) => new Date(b.createdDate) - new Date(a.createdDate),
     );
-    const visibleSessions = showAll
-        ? sortedSessions
-        : sortedSessions.slice(0, 10);
 
     const formatDate = (date) =>
         date
@@ -68,6 +110,39 @@ export default function TherapistDashboard() {
     const gateway = import.meta.env.VITE_API_GATEWAY_BASE_URL;
     const therapistName =
         profile?.therapistName || user?.firstName || "Therapist";
+
+    const today = new Date();
+    const totalSessions = sessions.length;
+    const todaysSessions = sessions.filter((r) => {
+        if (!r.visitDate) return false;
+        const d = new Date(r.visitDate);
+        return (
+            d.getDate() === today.getDate() &&
+            d.getMonth() === today.getMonth() &&
+            d.getFullYear() === today.getFullYear()
+        );
+    }).length;
+
+    const uniquePatients = new Set(
+        sessions.map((r) => r.patientId).filter(Boolean),
+    ).size;
+    const activeTherapyCases = sessions.filter(
+        (r) => r.needTherapy === true,
+    ).length;
+    const monthlyEarnings = totalSessions * 1200;
+    const therapistRating = 4.9;
+
+    const pendingSessions = sessions.filter(
+        (r) => r.therapistPlans?.therapistDecisionStatus === "PENDING",
+    );
+
+    const approvedSessions = sessions.filter(
+        (r) => r.therapistPlans?.therapistDecisionStatus === "APPROVED",
+    );
+
+    const visibleSessions = showAll
+        ? approvedSessions
+        : approvedSessions.slice(0, 10);
 
     useEffect(() => {
         if (!auth.token || !user) return;
@@ -100,6 +175,30 @@ export default function TherapistDashboard() {
             });
     }, [auth.token, user, profile?.userId, reduxProfileRole, dispatch]);
 
+    const approve = async (therapyPlanId) => {
+        await axios.put(
+            `${gateway}/api/therapists/therapy-plans/${therapyPlanId}/decision`,
+            null,
+            {
+                params: { status: "APPROVED" },
+                headers: { Authorization: `Bearer ${auth.token}` },
+            },
+        );
+        window.location.reload();
+    };
+
+    const reject = async (therapyPlanId) => {
+        await axios.put(
+            `${gateway}/api/therapists/therapy-plans/${therapyPlanId}/decision`,
+            null,
+            {
+                params: { status: "REJECTED" },
+                headers: { Authorization: `Bearer ${auth.token}` },
+            },
+        );
+        window.location.reload();
+    };
+
     if (!profile) {
         return <LoadingScreen />;
     }
@@ -121,8 +220,9 @@ export default function TherapistDashboard() {
                                 Therapist, {therapistName}
                             </h1>
                             <p className="text-gray-400 mt-2 text-lg">
-                                You have {sessions.length} session
-                                {sessions.length !== 1 ? "s" : ""} scheduled
+                                {todaysSessions > 0
+                                    ? `You have ${todaysSessions} session${todaysSessions > 1 ? "s" : ""} today`
+                                    : "No sessions scheduled for today"}
                             </p>
                         </div>
 
@@ -137,31 +237,123 @@ export default function TherapistDashboard() {
                         <StatCard
                             icon={Calendar}
                             title="Today's Sessions"
-                            value={sessions.length.toString()}
+                            value={todaysSessions}
                             iconBg="bg-purple-500/10"
                             iconColor="text-purple-400"
                         />
+
                         <StatCard
                             icon={Users}
-                            title="Total Patients"
-                            value="156"
+                            title="Patients Treated"
+                            value={uniquePatients}
                             iconBg="bg-blue-500/10"
                             iconColor="text-blue-400"
                         />
+
                         <StatCard
-                            icon={Star}
-                            title="Rating"
-                            value="4.9 ★"
-                            iconBg="bg-yellow-500/10"
-                            iconColor="text-yellow-400"
+                            icon={Brain}
+                            title="Active Therapy Cases"
+                            value={activeTherapyCases}
+                            iconBg="bg-pink-500/10"
+                            iconColor="text-pink-400"
                         />
+
                         <StatCard
                             icon={Wallet}
                             title="This Month"
-                            value="₹85,000"
+                            value={`₹${monthlyEarnings.toLocaleString("en-IN")}`}
                             iconBg="bg-green-500/10"
                             iconColor="text-green-400"
                         />
+                    </section>
+
+                    {/* ================= PENDING APPROVALS ================= */}
+                    <section className="bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700 rounded-2xl shadow-xl">
+                        <div className="p-6 border-b border-gray-700">
+                            <h2 className="text-2xl font-bold text-white">
+                                Pending Approvals
+                            </h2>
+                            <p className="text-sm text-gray-400">
+                                Therapy plans awaiting your decision
+                            </p>
+                        </div>
+
+                        {pendingSessions.length === 0 && (
+                            <div className="p-6 text-gray-400 text-center">
+                                No pending approvals
+                            </div>
+                        )}
+
+                        {pendingSessions.map((record) => (
+                            <div
+                                key={record.medicalRecordId}
+                                className="flex justify-between items-center p-5 border-t border-gray-700"
+                            >
+                                <div>
+                                    <p className="text-white font-semibold">
+                                        {record.patientName}
+                                    </p>
+                                    <p className="text-sm text-gray-400">
+                                        Medical ID: {record.medicalRecordId}
+                                    </p>
+                                </div>
+
+                                <div className="flex gap-3">
+                                    <Button
+                                        className="bg-green-600 hover:bg-green-700"
+                                        onClick={() =>
+                                            approve(
+                                                record.therapistPlans
+                                                    .therapyPlanId,
+                                            )
+                                        }
+                                    >
+                                        Approve
+                                    </Button>
+
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <Button variant="destructive">
+                                                Reject
+                                            </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent className="bg-gray-900 border-gray-700">
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle className="text-white">
+                                                    Confirm Rejection
+                                                </AlertDialogTitle>
+                                                <AlertDialogDescription className="text-gray-400">
+                                                    Are you sure you want to
+                                                    reject the therapy plan for{" "}
+                                                    <span className="font-semibold text-white">
+                                                        {record.patientName}
+                                                    </span>
+                                                    ? This action cannot be
+                                                    undone.
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel className="bg-gray-800 text-white border-gray-700 hover:bg-gray-700">
+                                                    Cancel
+                                                </AlertDialogCancel>
+                                                <AlertDialogAction
+                                                    className="bg-red-600 hover:bg-red-700 text-white"
+                                                    onClick={() =>
+                                                        reject(
+                                                            record
+                                                                .therapistPlans
+                                                                .therapyPlanId,
+                                                        )
+                                                    }
+                                                >
+                                                    Confirm Reject
+                                                </AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                </div>
+                            </div>
+                        ))}
                     </section>
 
                     {/* ================= MAIN GRID ================= */}
@@ -170,7 +362,7 @@ export default function TherapistDashboard() {
                         <section className="lg:col-span-2 bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700 rounded-2xl shadow-xl">
                             <div className="p-6 border-b border-gray-700">
                                 <div className="flex items-center gap-3 mb-2">
-                                    <div className="p-2 bg-purple-500/10 rounded-lg border border-purple-500/20">
+                                    <div className="p-2 bg-purple-500/10 rounded-xl border border-purple-500/20">
                                         <Brain className="w-5 h-5 text-purple-400" />
                                     </div>
                                     <div>
@@ -234,12 +426,12 @@ export default function TherapistDashboard() {
                                     <QuickAction
                                         to="/therapist/schedule"
                                         icon={Calendar}
-                                        label="Manage Schedule"
+                                        label="Manage Availability"
                                     />
                                     <QuickAction
-                                        to="/therapist/patients"
+                                        to="/therapist/clients"
                                         icon={Users}
-                                        label="My Patients"
+                                        label="My Clients"
                                     />
                                     <QuickAction
                                         to="/therapist/notes"
@@ -249,7 +441,7 @@ export default function TherapistDashboard() {
                                     <QuickAction
                                         to="/therapist/earnings"
                                         icon={Wallet}
-                                        label="Earnings"
+                                        label="Earnings Overview"
                                     />
                                 </div>
                             </div>
@@ -345,6 +537,13 @@ const SessionRow = ({ record, time, patient }) => (
         </div>
 
         <div className="flex items-center gap-3">
+            <Link
+                to={`/therapist/sessions/${record.medicalRecordId}/notes`}
+                className="inline-flex items-center gap-1 text-sm px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-md transition-colors font-medium"
+            >
+                Notes
+            </Link>
+
             <Button
                 size="sm"
                 variant="outline"

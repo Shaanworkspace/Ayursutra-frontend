@@ -20,6 +20,7 @@ import {
     ChevronDown,
     Settings,
 } from "lucide-react";
+import NotificationPanel from "@/components/common/NotificationPanel";
 
 export default function DoctorNavbar() {
     const { user } = useSelector((state) => state.auth);
@@ -88,15 +89,14 @@ export default function DoctorNavbar() {
                             icon={Users}
                             label="Patients"
                         />
-                        <NavLink
-                            to="/doctor/consultations"
-                            icon={Video}
-                            label="Consultations"
-                        />
                     </div>
 
                     {/* Right Section */}
                     <div className="flex items-center gap-3">
+                        <NotificationPanel
+                            notifications={[]} // later from API
+                            hasUnread={false} // later from backend
+                        />
                         {/* Dark Mode */}
                         <button
                             onClick={toggleDarkMode}
@@ -139,13 +139,13 @@ export default function DoctorNavbar() {
                                     >
                                         My Profile
                                     </DropdownLink>
-                                    <DropdownLink
+                                    {/* <DropdownLink
                                         to="/doctor/settings"
                                         icon={Settings}
                                         onClick={() => setProfileOpen(false)}
                                     >
                                         Settings
-                                    </DropdownLink>
+                                    </DropdownLink> */}
 
                                     <button
                                         onClick={handleLogout}
