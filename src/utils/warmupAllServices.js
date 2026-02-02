@@ -8,15 +8,31 @@ export function warmupAllServices() {
     if (warmupStarted) return;
     warmupStarted = true;
 
-    console.log("[WARMUP] Starting controlled service warmup…");
-
-    const baseApi = import.meta.env.VITE_API_GATEWAY_BASE_URL;
+    console.log("[WARMUP] Starting safe service warmup…");
 
     const services = [
-        { service: "user", url: `${baseApi}/api/user/health` },
-        { service: "patient", url: `${baseApi}/api/patients/health` },
-        { service: "doctor", url: `${baseApi}/api/doctors/health` },
-        { service: "therapist", url: `${baseApi}/api/therapists/health` },
+        {
+            service: "gateway",
+            url: "https://ayursutra-gateway.onrender.com/actuator/health",
+        },
+
+        // Phase 2: Wake services directly (NO gateway)
+        {
+            service: "user",
+            url: "https://user-service-2tqh.onrender.com/api/user/health",
+        },
+        {
+            service: "patient",
+            url: "https://ayursutra-patient-service.onrender.com/api/patients/health",
+        },
+        {
+            service: "doctor",
+            url: "https://ayursutra-doctor-service.onrender.com/api/doctors/health",
+        },
+        {
+            service: "therapist",
+            url: "https://therapist-service.onrender.com/api/therapists/health",
+        },
     ];
 
     services.forEach(({ service, url }) => {
@@ -25,7 +41,7 @@ export function warmupAllServices() {
             url,
             dispatch: store.dispatch,
             getState: store.getState,
-            maxWaitMs: 180000, // 3 minutes HARD LIMIT
+            maxWaitMs: 190000,
         });
     });
 }
