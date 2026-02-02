@@ -19,6 +19,8 @@ export default function LoginPage() {
     const [showLoadingPopup, setShowLoadingPopup] = useState(true);
     const [isProcessing, setIsProcessing] = useState(false);
     const [selectedRole, setSelectedRole] = useState("");
+    const [isGithubLoading, setIsGithubLoading] = useState(false);
+    const [githubStatusText, setGithubStatusText] = useState("");
 
     const navigate = useNavigate();
     const dispatch = useDispatch();
@@ -121,25 +123,35 @@ export default function LoginPage() {
             setIsProcessing(false);
         }
     };
-    const handleGithubLogin = async () => {
-        if (!selectedRole) {
-            toast.error("Please select role first");
-            return;
-        }
-        console.log(
-            "Sending Request from github Click with Role : ",
-            selectedRole,
-        );
 
-        await axios.post(`${baseApi}/api/user/pre-login`, {
-            role: selectedRole,
-        });
-        console.log("Success Storing Role");
-        window.open(
-            `${baseGithubApi}/oauth2/authorization/github`,
-            "githubLogin",
-            "width=600,height=700",
-        );
+    const handleGithubLogin = async () => {
+        if (!selectedRole || isGithubLoading) return;
+
+        setIsGithubLoading(true);
+        setGithubStatusText("Starting server…");
+
+        try {
+            await axios.post(
+                `${baseApi}/api/user/pre-login`,
+                { role: selectedRole },
+                { timeout: 280000 },
+            );
+
+            setGithubStatusText("Redirecting to GitHub…");
+
+            setTimeout(() => {
+                window.open(
+                    `${baseGithubApi}/oauth2/authorization/github`,
+                    "githubLogin",
+                    "width=600,height=700",
+                );
+            }, 600);
+        } catch {
+            setGithubStatusText("Server still waking up. Try again shortly.");
+            setIsGithubLoading(false);
+
+            setTimeout(() => setGithubStatusText(""), 3000);
+        }
     };
 
     const canLogin =
@@ -287,6 +299,7 @@ export default function LoginPage() {
                             })}
                         </div>
                     </div>
+
                     {/* LOGIN BUTTON */}
                     <ColdStartNotice />
                     <button
@@ -315,22 +328,35 @@ export default function LoginPage() {
                     </button>
                     <button
                         onClick={handleGithubLogin}
-                        disabled={!selectedRole}
+                        disabled={!selectedRole || isGithubLoading}
                         className={`w-full mt-3 flex items-center justify-center gap-2 py-2.5 rounded-xl
         bg-gray-800 border border-gray-700 text-gray-200 font-semibold
-        hover:bg-gray-700 transition
-        ${!selectedRole ? "opacity-50 cursor-not-allowed" : ""}
+        transition-all duration-300
+        ${
+            isGithubLoading
+                ? "opacity-70 cursor-not-allowed"
+                : "hover:bg-gray-700"
+        }
     `}
                     >
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 24 24"
-                            fill="currentColor"
-                            className="w-5 h-5"
-                        >
-                            <path d="M12 .5C5.73.5.5 5.74.5 12.03c0 5.1 3.29 9.42 7.86 10.95.58.1.79-.25.79-.56v-2.1c-3.2.7-3.88-1.54-3.88-1.54-.52-1.34-1.28-1.7-1.28-1.7-1.04-.72.08-.7.08-.7 1.15.08 1.76 1.19 1.76 1.19 1.02 1.76 2.68 1.25 3.34.96.1-.74.4-1.25.72-1.54-2.55-.29-5.23-1.29-5.23-5.73 0-1.26.45-2.3 1.18-3.11-.12-.29-.51-1.45.11-3.03 0 0 .97-.31 3.18 1.19a10.8 10.8 0 0 1 2.9-.4c.98 0 1.97.14 2.9.4 2.2-1.5 3.18-1.19 3.18-1.19.62 1.58.23 2.74.11 3.03.73.81 1.18 1.85 1.18 3.11 0 4.45-2.68 5.43-5.24 5.71.41.36.78 1.06.78 2.14v3.17c0 .31.21.66.79.56 4.57-1.53 7.86-5.85 7.86-10.95C23.5 5.74 18.27.5 12 .5Z" />
-                        </svg>
-                        Login with GitHub
+                        {isGithubLoading ? (
+                            <>
+                                <div className="w-4 h-4 border-2 border-gray-300 border-t-transparent rounded-full animate-spin" />
+                                <span>{githubStatusText || "Working…"}</span>
+                            </>
+                        ) : (
+                            <>
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 24 24"
+                                    fill="currentColor"
+                                    className="w-5 h-5"
+                                >
+                                    <path d="M12 .5C5.73.5.5 5.74.5 12.03c0 5.1 3.29 9.42 7.86 10.95.58.1.79-.25.79-.56v-2.1c-3.2.7-3.88-1.54-3.88-1.54-.52-1.34-1.28-1.7-1.28-1.7-1.04-.72.08-.7.08-.7 1.15.08 1.76 1.19 1.76 1.19 1.02 1.76 2.68 1.25 3.34.96.1-.74.4-1.25.72-1.54-2.55-.29-5.23-1.29-5.23-5.73 0-1.26.45-2.3 1.18-3.11-.12-.29-.51-1.45.11-3.03 0 0 .97-.31 3.18 1.19a10.8 10.8 0 0 1 2.9-.4c.98 0 1.97.14 2.9.4 2.2-1.5 3.18-1.19 3.18-1.19.62 1.58.23 2.74.11 3.03.73.81 1.18 1.85 1.18 3.11 0 4.45-2.68 5.43-5.24 5.71.41.36.78 1.06.78 2.14v3.17c0 .31.21.66.79.56 4.57-1.53 7.86-5.85 7.86-10.95C23.5 5.74 18.27.5 12 .5Z" />
+                                </svg>
+                                Login with GitHub
+                            </>
+                        )}
                     </button>
                 </div>
 
