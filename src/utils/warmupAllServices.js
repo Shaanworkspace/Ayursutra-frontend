@@ -14,7 +14,7 @@ export function warmupAllServices() {
         // Phase 1: Wake gateway first (single, light call)
         {
             service: "gateway",
-            url: `${import.meta.env.VITE_GATEWAY_BASE_URL}/actuator/health`,
+            url: `${import.meta.env.VITE_GATEWAY_BASE_URL}/api/health`,
         },
 
         // Phase 2: Wake services directly (bypass gateway)
@@ -42,7 +42,7 @@ export function warmupAllServices() {
             url,
             dispatch: store.dispatch,
             getState: store.getState,
-            maxWaitMs: 190000, // ~3 minutes
+            maxWaitMs: 210000,
         });
     });
 }
