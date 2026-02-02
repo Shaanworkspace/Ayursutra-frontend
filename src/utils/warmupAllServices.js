@@ -7,7 +7,8 @@ let warmupStarted = false;
 export function warmupAllServices() {
     if (warmupStarted) return;
     warmupStarted = true;
-    console.log("[WARMUP] Starting background service warmup...");
+
+    console.log("[WARMUP] Starting controlled service warmup…");
 
     const baseApi = import.meta.env.VITE_API_GATEWAY_BASE_URL;
 
@@ -24,6 +25,7 @@ export function warmupAllServices() {
             url,
             dispatch: store.dispatch,
             getState: store.getState,
+            maxWaitMs: 180000, // 3 minutes HARD LIMIT
         });
     });
 }

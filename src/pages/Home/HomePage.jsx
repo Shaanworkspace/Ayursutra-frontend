@@ -14,6 +14,7 @@ import {
 import Navbar from "@/pages/Home/components/navbar";
 import Footer from "./components/Footer";
 import { warmupAllServices } from "@/utils/warmupAllServices";
+import ColdStartNotice from "@/components/common/ColdStartNotice";
 
 export default function HomePage() {
     useEffect(() => {
@@ -69,6 +70,7 @@ export default function HomePage() {
                                             <ArrowRight className="ml-2 h-5 w-5" />
                                         </Button>
                                     </Link>
+
                                     <Button
                                         variant="outline"
                                         size="lg"
@@ -76,6 +78,7 @@ export default function HomePage() {
                                     >
                                         Learn More
                                     </Button>
+                                    <ColdStartNotice />
                                 </div>
 
                                 {/* Trust indicators */}
@@ -351,7 +354,7 @@ export default function HomePage() {
                                                     key={i}
                                                     className="w-5 h-5 fill-yellow-400 text-yellow-400"
                                                 />
-                                            )
+                                            ),
                                         )}
                                     </div>
                                     <p className="text-gray-600 dark:text-gray-300 mb-6 italic">

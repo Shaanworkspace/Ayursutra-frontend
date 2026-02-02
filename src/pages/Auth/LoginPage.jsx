@@ -9,6 +9,7 @@ import { useDispatch } from "react-redux";
 import { setCredentials } from "@/Store/Slices/authSlice";
 
 import { warmupAllServices } from "@/utils/warmupAllServices";
+import ColdStartNotice from "@/components/common/ColdStartNotice";
 
 export default function LoginPage() {
     const [email, setEmail] = useState("");
@@ -287,6 +288,7 @@ export default function LoginPage() {
                         </div>
                     </div>
                     {/* LOGIN BUTTON */}
+                    <ColdStartNotice />
                     <button
                         onClick={handleLogin}
                         disabled={!canLogin}

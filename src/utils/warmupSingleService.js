@@ -8,40 +8,43 @@ export async function warmupSingleService({
     url,
     dispatch,
     getState,
-    timeout = 150000,
+    maxWaitMs = 180000, // 3 minutes
 }) {
     const currentStatus = getState().serviceStatus[service];
 
     if (currentStatus === "up" || currentStatus === "waking") {
-        console.log(`[WARMUP] ${service} already ${currentStatus}, skipping`);
-        // toast.info(`[WARMUP] ${service} already ${currentStatus}, skipping`);
-        return true;
-    } else {
-        console.log(`[WARMUP] Checking ${service} service...`);
-        toast.info(`[WARMUP] Checking ${service} service...`);
-        dispatch(setServiceStatus({ service, status: "waking" }));
-
-        const start = Date.now();
-
-        while (Date.now() - start < timeout) {
-            try {
-                await axios.get(url, { timeout: 130000 });
-
-                console.log(`${service} service is UP`);
-                // toast.success(` ${service} service is UP`);
-                dispatch(setServiceStatus({ service, status: "up" }));
-                return true;
-            } catch (err) {
-                console.log(` ${service} not ready, retrying...`);
-                toast.warning(`${service} not ready, retrying...`);
-                await new Promise((r) => setTimeout(r, 180000));
-            }
-        }
-
-        console.log(
-            `[WARMUP] ${service} FAILED to start within ${timeout / 1000}s`,
-        );
-        dispatch(setServiceStatus({ service, status: "down" }));
-        return false;
+        return;
     }
+
+    dispatch(setServiceStatus({ service, status: "waking" }));
+
+    toast.info(
+        `${service.toUpperCase()} service is starting (Render free tier, may take ~2–3 min)`,
+        { duration: 6000 },
+    );
+
+    const startTime = Date.now();
+
+    // 🔒 ONE request per attempt, slow & safe
+    while (Date.now() - startTime < maxWaitMs) {
+        try {
+            await axios.get(url, {
+                timeout: 120000, // allow Spring Boot startup
+            });
+
+            dispatch(setServiceStatus({ service, status: "up" }));
+            toast.success(`${service.toUpperCase()} service is ready`);
+            return;
+        } catch {
+            // ⏳ Wait FULL 3 minutes before retry (no spamming)
+            await new Promise((r) => setTimeout(r, 180000));
+        }
+    }
+
+    dispatch(setServiceStatus({ service, status: "down" }));
+
+    toast.error(
+        `${service.toUpperCase()} service is still starting. Please refresh in a moment.`,
+        { duration: 8000 },
+    );
 }
