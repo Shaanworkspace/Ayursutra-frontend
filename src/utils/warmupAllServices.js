@@ -11,27 +11,28 @@ export function warmupAllServices() {
     console.log("[WARMUP] Starting safe service warmup…");
 
     const services = [
+        // Phase 1: Wake gateway first (single, light call)
         {
             service: "gateway",
-            url: "https://ayursutra-gateway.onrender.com/actuator/health",
+            url: `${import.meta.env.VITE_GATEWAY_BASE_URL}/actuator/health`,
         },
 
-        // Phase 2: Wake services directly (NO gateway)
+        // Phase 2: Wake services directly (bypass gateway)
         {
             service: "user",
-            url: "https://user-service-2tqh.onrender.com/api/user/health",
+            url: `${import.meta.env.VITE_USER_SERVICE_URL}/api/user/health`,
         },
         {
             service: "patient",
-            url: "https://ayursutra-patient-service.onrender.com/api/patients/health",
+            url: `${import.meta.env.VITE_PATIENT_SERVICE_URL}/api/patients/health`,
         },
         {
             service: "doctor",
-            url: "https://ayursutra-doctor-service.onrender.com/api/doctors/health",
+            url: `${import.meta.env.VITE_DOCTOR_SERVICE_URL}/api/doctors/health`,
         },
         {
             service: "therapist",
-            url: "https://therapist-service.onrender.com/api/therapists/health",
+            url: `${import.meta.env.VITE_THERAPIST_SERVICE_URL}/api/therapists/health`,
         },
     ];
 
@@ -41,7 +42,7 @@ export function warmupAllServices() {
             url,
             dispatch: store.dispatch,
             getState: store.getState,
-            maxWaitMs: 190000,
+            maxWaitMs: 190000, // ~3 minutes
         });
     });
 }
