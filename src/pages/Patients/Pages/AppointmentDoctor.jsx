@@ -70,11 +70,20 @@ const AppointmentDoctor = () => {
     }, [user, profile, date, time]);
 
     useEffect(() => {
-        axios.get(`${gateway}/api/doctors`).then((res) => {
-            console.log("Doc : ", res.data);
-            setDoctors(res.data);
-        });
-    }, []);
+        axios
+            .get(`${gateway}/api/doctors`, {
+                headers: {
+                    Authorization: `Bearer ${auth.token}`,
+                },
+            })
+            .then((res) => {
+                console.log("Doc : ", res.data);
+                setDoctors(res.data);
+            })
+            .catch((err) => {
+                console.error("Error fetching doctors:", err);
+            });
+    }, [gateway, auth.token]);
 
     const filteredDoctors = useMemo(() => {
         let result = doctors;
