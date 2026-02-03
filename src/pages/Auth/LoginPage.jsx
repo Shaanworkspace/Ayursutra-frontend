@@ -128,30 +128,16 @@ export default function LoginPage() {
         if (!selectedRole || isGithubLoading) return;
 
         setIsGithubLoading(true);
-        setGithubStatusText("Starting server…");
+        setGithubStatusText("Redirecting to GitHub…");
 
-        try {
-            await axios.post(
-                `${baseApi}/api/user/pre-login`,
-                { role: selectedRole },
-                { timeout: 280000 },
-            );
+        const oauthUrl = `${baseGithubApi}/api/user/oauth2/start/github?role=${selectedRole}`;
 
-            setGithubStatusText("Redirecting to GitHub…");
+        window.open(oauthUrl, "githubLogin", "width=600,height=700");
 
-            setTimeout(() => {
-                window.open(
-                    `${baseGithubApi}/oauth2/authorization/github`,
-                    "githubLogin",
-                    "width=600,height=700",
-                );
-            }, 600);
-        } catch {
-            setGithubStatusText("Server still waking up. Try again shortly.");
+        setTimeout(() => {
             setIsGithubLoading(false);
-
-            setTimeout(() => setGithubStatusText(""), 3000);
-        }
+            setGithubStatusText("");
+        }, 10000);
     };
 
     const canLogin =
