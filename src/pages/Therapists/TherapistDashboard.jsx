@@ -15,6 +15,7 @@ import {
     Sparkles,
     Eye,
     Brain,
+    Loader2,
 } from "lucide-react";
 import TherapistNavbar from "./components/TherapistNavbar";
 import { Button } from "@/components/ui/button";
@@ -54,41 +55,36 @@ export default function TherapistDashboard() {
 
     const [medicalRecords, setMedicalRecords] = useState([]);
     const [loadingRecords, setLoadingRecords] = useState(true);
+    const [loadingProfile, setLoadingProfile] = useState(false);
     const sessions = medicalRecords;
+
+    const gateway = import.meta.env.VITE_API_GATEWAY_BASE_URL;
 
     useEffect(() => {
         if (!auth.token || !profile?.userId) return;
-        let isMounted = true;
-        axios
-            .get(
-                `${gateway}/api/therapists/medical-records/${profile.userId}`,
-                {
-                    headers: {
-                        Authorization: `Bearer ${auth.token}`,
-                    },
-                },
-            )
-            .then((res) => {
-                if (isMounted) {
-                    setMedicalRecords(res.data || []);
-                }
-            })
-            .catch((err) => {
-                console.error("Failed to fetch medical records", err);
-                if (isMounted) {
-                    setMedicalRecords([]);
-                }
-            })
-            .finally(() => {
-                if (isMounted) {
-                    setLoadingRecords(false);
-                }
-            });
 
-        return () => {
-            isMounted = false;
+        const fetchMedicalRecords = async () => {
+            try {
+                setLoadingRecords(true);
+                const res = await axios.get(
+                    `${gateway}/api/therapists/medical-records/${profile.userId}`,
+                    {
+                        headers: {
+                            Authorization: `Bearer ${auth.token}`,
+                        },
+                    },
+                );
+                setMedicalRecords(res.data || []);
+            } catch (err) {
+                console.error("Failed to fetch medical records", err);
+                setMedicalRecords([]);
+            } finally {
+                setLoadingRecords(false);
+            }
         };
-    }, [profile?.userId, auth.token]);
+
+        fetchMedicalRecords();
+    }, [profile?.userId, auth.token, gateway]);
 
     const sortedSessions = [...sessions].sort(
         (a, b) => new Date(b.createdDate) - new Date(a.createdDate),
@@ -103,11 +99,6 @@ export default function TherapistDashboard() {
               })
             : "Not Scheduled";
 
-    console.log("token :", auth.token);
-    console.log(reduxProfileRole, " : ", profile);
-    console.log(roleU, " :  ", user);
-
-    const gateway = import.meta.env.VITE_API_GATEWAY_BASE_URL;
     const therapistName =
         profile?.therapistName || user?.firstName || "Therapist";
 
@@ -156,24 +147,40 @@ export default function TherapistDashboard() {
 
         if (!shouldFetch) return;
 
-        axios
-            .get(`${gateway}/api/therapists/profile/me`, {
-                headers: {
-                    Authorization: `Bearer ${auth.token}`,
-                },
-            })
-            .then((res) => {
+        const fetchTherapistProfile = async () => {
+            try {
+                setLoadingProfile(true);
+                const res = await axios.get(
+                    `${gateway}/api/therapists/profile/me`,
+                    {
+                        headers: {
+                            Authorization: `Bearer ${auth.token}`,
+                        },
+                    },
+                );
                 dispatch(
                     setProfile({
                         role: "THERAPIST",
                         data: res.data,
                     }),
                 );
-            })
-            .catch((error) => {
+            } catch (error) {
                 console.error("Error fetching Therapist profile:", error);
-            });
-    }, [auth.token, user, profile?.userId, reduxProfileRole, dispatch]);
+            } finally {
+                setLoadingProfile(false);
+            }
+        };
+
+        fetchTherapistProfile();
+    }, [
+        auth.token,
+        user?.email,
+        profile?.email,
+        reduxProfileRole,
+        roleU,
+        gateway,
+        dispatch,
+    ]);
 
     const approve = async (therapyPlanId) => {
         await axios.put(
@@ -199,7 +206,7 @@ export default function TherapistDashboard() {
         window.location.reload();
     };
 
-    if (!profile) {
+    if (!profile && loadingProfile) {
         return <LoadingScreen />;
     }
 
@@ -219,11 +226,15 @@ export default function TherapistDashboard() {
                             <h1 className="text-4xl font-bold text-white">
                                 Therapist, {therapistName}
                             </h1>
-                            <p className="text-gray-400 mt-2 text-lg">
-                                {todaysSessions > 0
-                                    ? `You have ${todaysSessions} session${todaysSessions > 1 ? "s" : ""} today`
-                                    : "No sessions scheduled for today"}
-                            </p>
+                            {loadingRecords ? (
+                                <div className="h-6 bg-gray-800 rounded w-48 mt-2 animate-pulse"></div>
+                            ) : (
+                                <p className="text-gray-400 mt-2 text-lg">
+                                    {todaysSessions > 0
+                                        ? `You have ${todaysSessions} session${todaysSessions > 1 ? "s" : ""} today`
+                                        : "No sessions scheduled for today"}
+                                </p>
+                            )}
                         </div>
 
                         <Button className="bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-500/20 h-12 px-6">
@@ -234,37 +245,48 @@ export default function TherapistDashboard() {
 
                     {/* ================= QUICK STATS ================= */}
                     <section className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <StatCard
-                            icon={Calendar}
-                            title="Today's Sessions"
-                            value={todaysSessions}
-                            iconBg="bg-purple-500/10"
-                            iconColor="text-purple-400"
-                        />
+                        {loadingRecords ? (
+                            <>
+                                <StatCardSkeleton />
+                                <StatCardSkeleton />
+                                <StatCardSkeleton />
+                                <StatCardSkeleton />
+                            </>
+                        ) : (
+                            <>
+                                <StatCard
+                                    icon={Calendar}
+                                    title="Today's Sessions"
+                                    value={todaysSessions}
+                                    iconBg="bg-purple-500/10"
+                                    iconColor="text-purple-400"
+                                />
 
-                        <StatCard
-                            icon={Users}
-                            title="Patients Treated"
-                            value={uniquePatients}
-                            iconBg="bg-blue-500/10"
-                            iconColor="text-blue-400"
-                        />
+                                <StatCard
+                                    icon={Users}
+                                    title="Patients Treated"
+                                    value={uniquePatients}
+                                    iconBg="bg-blue-500/10"
+                                    iconColor="text-blue-400"
+                                />
 
-                        <StatCard
-                            icon={Brain}
-                            title="Active Therapy Cases"
-                            value={activeTherapyCases}
-                            iconBg="bg-pink-500/10"
-                            iconColor="text-pink-400"
-                        />
+                                <StatCard
+                                    icon={Brain}
+                                    title="Active Therapy Cases"
+                                    value={activeTherapyCases}
+                                    iconBg="bg-pink-500/10"
+                                    iconColor="text-pink-400"
+                                />
 
-                        <StatCard
-                            icon={Wallet}
-                            title="This Month"
-                            value={`₹${monthlyEarnings.toLocaleString("en-IN")}`}
-                            iconBg="bg-green-500/10"
-                            iconColor="text-green-400"
-                        />
+                                <StatCard
+                                    icon={Wallet}
+                                    title="This Month"
+                                    value={`₹${monthlyEarnings.toLocaleString("en-IN")}`}
+                                    iconBg="bg-green-500/10"
+                                    iconColor="text-green-400"
+                                />
+                            </>
+                        )}
                     </section>
 
                     {/* ================= PENDING APPROVALS ================= */}
@@ -278,82 +300,88 @@ export default function TherapistDashboard() {
                             </p>
                         </div>
 
-                        {pendingSessions.length === 0 && (
+                        {loadingRecords ? (
+                            <div className="p-6 space-y-4">
+                                <PendingApprovalSkeleton />
+                                <PendingApprovalSkeleton />
+                            </div>
+                        ) : pendingSessions.length === 0 ? (
                             <div className="p-6 text-gray-400 text-center">
                                 No pending approvals
                             </div>
+                        ) : (
+                            pendingSessions.map((record) => (
+                                <div
+                                    key={record.medicalRecordId}
+                                    className="flex justify-between items-center p-5 border-t border-gray-700"
+                                >
+                                    <div>
+                                        <p className="text-white font-semibold">
+                                            {record.patientName}
+                                        </p>
+                                        <p className="text-sm text-gray-400">
+                                            Medical ID: {record.medicalRecordId}
+                                        </p>
+                                    </div>
+
+                                    <div className="flex gap-3">
+                                        <Button
+                                            className="bg-green-600 hover:bg-green-700"
+                                            onClick={() =>
+                                                approve(
+                                                    record.therapistPlans
+                                                        .therapyPlanId,
+                                                )
+                                            }
+                                        >
+                                            Approve
+                                        </Button>
+
+                                        <AlertDialog>
+                                            <AlertDialogTrigger asChild>
+                                                <Button variant="destructive">
+                                                    Reject
+                                                </Button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent className="bg-gray-900 border-gray-700">
+                                                <AlertDialogHeader>
+                                                    <AlertDialogTitle className="text-white">
+                                                        Confirm Rejection
+                                                    </AlertDialogTitle>
+                                                    <AlertDialogDescription className="text-gray-400">
+                                                        Are you sure you want to
+                                                        reject the therapy plan
+                                                        for{" "}
+                                                        <span className="font-semibold text-white">
+                                                            {record.patientName}
+                                                        </span>
+                                                        ? This action cannot be
+                                                        undone.
+                                                    </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                    <AlertDialogCancel className="bg-gray-800 text-white border-gray-700 hover:bg-gray-700">
+                                                        Cancel
+                                                    </AlertDialogCancel>
+                                                    <AlertDialogAction
+                                                        className="bg-red-600 hover:bg-red-700 text-white"
+                                                        onClick={() =>
+                                                            reject(
+                                                                record
+                                                                    .therapistPlans
+                                                                    .therapyPlanId,
+                                                            )
+                                                        }
+                                                    >
+                                                        Confirm Reject
+                                                    </AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
+                                    </div>
+                                </div>
+                            ))
                         )}
-
-                        {pendingSessions.map((record) => (
-                            <div
-                                key={record.medicalRecordId}
-                                className="flex justify-between items-center p-5 border-t border-gray-700"
-                            >
-                                <div>
-                                    <p className="text-white font-semibold">
-                                        {record.patientName}
-                                    </p>
-                                    <p className="text-sm text-gray-400">
-                                        Medical ID: {record.medicalRecordId}
-                                    </p>
-                                </div>
-
-                                <div className="flex gap-3">
-                                    <Button
-                                        className="bg-green-600 hover:bg-green-700"
-                                        onClick={() =>
-                                            approve(
-                                                record.therapistPlans
-                                                    .therapyPlanId,
-                                            )
-                                        }
-                                    >
-                                        Approve
-                                    </Button>
-
-                                    <AlertDialog>
-                                        <AlertDialogTrigger asChild>
-                                            <Button variant="destructive">
-                                                Reject
-                                            </Button>
-                                        </AlertDialogTrigger>
-                                        <AlertDialogContent className="bg-gray-900 border-gray-700">
-                                            <AlertDialogHeader>
-                                                <AlertDialogTitle className="text-white">
-                                                    Confirm Rejection
-                                                </AlertDialogTitle>
-                                                <AlertDialogDescription className="text-gray-400">
-                                                    Are you sure you want to
-                                                    reject the therapy plan for{" "}
-                                                    <span className="font-semibold text-white">
-                                                        {record.patientName}
-                                                    </span>
-                                                    ? This action cannot be
-                                                    undone.
-                                                </AlertDialogDescription>
-                                            </AlertDialogHeader>
-                                            <AlertDialogFooter>
-                                                <AlertDialogCancel className="bg-gray-800 text-white border-gray-700 hover:bg-gray-700">
-                                                    Cancel
-                                                </AlertDialogCancel>
-                                                <AlertDialogAction
-                                                    className="bg-red-600 hover:bg-red-700 text-white"
-                                                    onClick={() =>
-                                                        reject(
-                                                            record
-                                                                .therapistPlans
-                                                                .therapyPlanId,
-                                                        )
-                                                    }
-                                                >
-                                                    Confirm Reject
-                                                </AlertDialogAction>
-                                            </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                    </AlertDialog>
-                                </div>
-                            </div>
-                        ))}
                     </section>
 
                     {/* ================= MAIN GRID ================= */}
@@ -377,31 +405,37 @@ export default function TherapistDashboard() {
                             </div>
 
                             <div className="divide-y divide-gray-700">
-                                {visibleSessions.length === 0 && (
+                                {loadingRecords ? (
+                                    <div className="p-6 space-y-4">
+                                        <SessionSkeleton />
+                                        <SessionSkeleton />
+                                        <SessionSkeleton />
+                                    </div>
+                                ) : visibleSessions.length === 0 ? (
                                     <div className="p-8 text-center">
                                         <Brain className="w-12 h-12 text-gray-600 mx-auto mb-3" />
                                         <p className="text-gray-400">
                                             No sessions found
                                         </p>
                                     </div>
+                                ) : (
+                                    visibleSessions.map((record) => (
+                                        <SessionRow
+                                            key={record.medicalRecordId}
+                                            record={record}
+                                            time={formatDate(
+                                                record.visitDate ||
+                                                    record.createdDate,
+                                            )}
+                                            patient={
+                                                record.patientName ?? "Patient"
+                                            }
+                                        />
+                                    ))
                                 )}
-
-                                {visibleSessions.map((record) => (
-                                    <SessionRow
-                                        key={record.medicalRecordId}
-                                        record={record}
-                                        time={formatDate(
-                                            record.visitDate ||
-                                                record.createdDate,
-                                        )}
-                                        patient={
-                                            record.patientName ?? "Patient"
-                                        }
-                                    />
-                                ))}
                             </div>
 
-                            {sortedSessions.length > 10 && (
+                            {!loadingRecords && sortedSessions.length > 10 && (
                                 <div className="p-4 text-center border-t border-gray-700">
                                     <button
                                         onClick={() => setShowAll(!showAll)}
@@ -454,21 +488,30 @@ export default function TherapistDashboard() {
                                     </h3>
                                     <TrendingUp className="w-6 h-6 text-white/80" />
                                 </div>
-                                <p className="text-6xl font-bold text-white mb-2">
-                                    4.9
-                                    <span className="text-2xl text-white/70">
-                                        /5
-                                    </span>
-                                </p>
-                                <div className="flex items-center gap-2 text-white/90">
-                                    <Star className="w-5 h-5 fill-white" />
-                                    <span className="font-medium">
-                                        Excellent feedback
-                                    </span>
-                                </div>
-                                <p className="text-sm text-white/70 mt-3">
-                                    Based on 156 patient reviews
-                                </p>
+                                {loadingRecords ? (
+                                    <div className="space-y-3">
+                                        <div className="h-16 bg-white/20 rounded w-32 animate-pulse"></div>
+                                        <div className="h-4 bg-white/20 rounded w-40 animate-pulse"></div>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <p className="text-6xl font-bold text-white mb-2">
+                                            4.9
+                                            <span className="text-2xl text-white/70">
+                                                /5
+                                            </span>
+                                        </p>
+                                        <div className="flex items-center gap-2 text-white/90">
+                                            <Star className="w-5 h-5 fill-white" />
+                                            <span className="font-medium">
+                                                Excellent feedback
+                                            </span>
+                                        </div>
+                                        <p className="text-sm text-white/70 mt-3">
+                                            Based on 156 patient reviews
+                                        </p>
+                                    </>
+                                )}
                             </div>
 
                             {/* Calendar Mini Preview */}
@@ -500,6 +543,48 @@ export default function TherapistDashboard() {
         </>
     );
 }
+
+/* ================= SKELETON COMPONENTS ================= */
+
+const StatCardSkeleton = () => (
+    <div className="bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700 rounded-xl p-5 shadow-lg animate-pulse">
+        <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-gray-700 rounded-xl"></div>
+            <div className="flex-1">
+                <div className="h-3 bg-gray-700 rounded w-24 mb-2"></div>
+                <div className="h-6 bg-gray-700 rounded w-16"></div>
+            </div>
+        </div>
+    </div>
+);
+
+const PendingApprovalSkeleton = () => (
+    <div className="flex justify-between items-center p-5 border-t border-gray-700 animate-pulse">
+        <div className="flex-1">
+            <div className="h-5 bg-gray-700 rounded w-32 mb-2"></div>
+            <div className="h-4 bg-gray-700 rounded w-48"></div>
+        </div>
+        <div className="flex gap-3">
+            <div className="h-9 bg-gray-700 rounded w-20"></div>
+            <div className="h-9 bg-gray-700 rounded w-20"></div>
+        </div>
+    </div>
+);
+
+const SessionSkeleton = () => (
+    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-5 gap-4 animate-pulse">
+        <div className="flex-1 w-full">
+            <div className="h-5 bg-gray-700 rounded w-40 mb-2"></div>
+            <div className="h-4 bg-gray-700 rounded w-32 mb-2"></div>
+            <div className="h-6 bg-gray-700 rounded-full w-28"></div>
+        </div>
+        <div className="flex items-center gap-3">
+            <div className="h-9 bg-gray-700 rounded w-16"></div>
+            <div className="h-9 bg-gray-700 rounded w-16"></div>
+            <div className="h-9 bg-gray-700 rounded w-16"></div>
+        </div>
+    </div>
+);
 
 /* ================= SUB COMPONENTS ================= */
 

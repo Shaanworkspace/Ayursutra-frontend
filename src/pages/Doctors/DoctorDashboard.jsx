@@ -11,6 +11,7 @@ import {
     Wallet,
     PlayCircle,
     Eye,
+    Loader2,
 } from "lucide-react";
 import { DoctorLayout } from "./components/DoctorLayout";
 import axios from "axios";
@@ -27,6 +28,7 @@ export default function DoctorDashboard() {
     const storedProfile = localStorage.getItem("profile");
     const storedUser = localStorage.getItem("userResponse");
     const [showAll, setShowAll] = useState(false);
+    const [loadingProfile, setLoadingProfile] = useState(false);
 
     const profile = storedProfile
         ? JSON.parse(storedProfile).data
@@ -72,6 +74,7 @@ export default function DoctorDashboard() {
 
     useEffect(() => {
         if (!auth.token || !user) return;
+
         const profileUserId = profile?.email;
         const authUserId = user?.email;
 
@@ -80,25 +83,41 @@ export default function DoctorDashboard() {
             reduxProfileRole?.toLowerCase() !== roleU?.toLowerCase();
 
         if (shouldFetch) {
-            axios
-                .get(`${gateway}/api/doctors/profile/me`, {
-                    headers: {
-                        Authorization: `Bearer ${auth.token}`,
-                    },
-                })
-                .then((res) => {
+            const fetchDoctorProfile = async () => {
+                try {
+                    setLoadingProfile(true);
+                    const res = await axios.get(
+                        `${gateway}/api/doctors/profile/me`,
+                        {
+                            headers: {
+                                Authorization: `Bearer ${auth.token}`,
+                            },
+                        },
+                    );
                     dispatch(
                         setProfile({
                             role: "DOCTOR",
                             data: res.data,
                         }),
                     );
-                })
-                .catch((error) => {
+                } catch (error) {
                     console.error("Error fetching doctor profile:", error);
-                });
+                } finally {
+                    setLoadingProfile(false);
+                }
+            };
+
+            fetchDoctorProfile();
         }
-    }, [auth.token, user, profile?.userId, reduxProfileRole, dispatch]);
+    }, [
+        auth.token,
+        user?.email,
+        profile?.email,
+        reduxProfileRole,
+        roleU,
+        gateway,
+        dispatch,
+    ]);
 
     return (
         <DoctorLayout>
@@ -110,39 +129,50 @@ export default function DoctorDashboard() {
                             Welcome back, Dr. {doctorFName}
                         </h1>
                         <p className="text-gray-400 mt-1">
-                            Here’s a quick overview of today
+                            Here's a quick overview of today
                         </p>
                     </header>
 
                     {/* Stats */}
                     <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <StatCard
-                            icon={Calendar}
-                            label="Total Appointments"
-                            value={totalAppointments}
-                            accent="emerald"
-                        />
+                        {loadingProfile ? (
+                            <>
+                                <StatCardSkeleton />
+                                <StatCardSkeleton />
+                                <StatCardSkeleton />
+                                <StatCardSkeleton />
+                            </>
+                        ) : (
+                            <>
+                                <StatCard
+                                    icon={Calendar}
+                                    label="Total Appointments"
+                                    value={totalAppointments}
+                                    accent="emerald"
+                                />
 
-                        <StatCard
-                            icon={Users}
-                            label="Patients Treated"
-                            value={uniquePatients}
-                            accent="cyan"
-                        />
+                                <StatCard
+                                    icon={Users}
+                                    label="Patients Treated"
+                                    value={uniquePatients}
+                                    accent="cyan"
+                                />
 
-                        <StatCard
-                            icon={Activity}
-                            label="Active Treatments"
-                            value={activeTreatments}
-                            accent="purple"
-                        />
+                                <StatCard
+                                    icon={Activity}
+                                    label="Active Treatments"
+                                    value={activeTreatments}
+                                    accent="purple"
+                                />
 
-                        <StatCard
-                            icon={Wallet}
-                            label="Estimated Earnings"
-                            value={`₹${earnings.toLocaleString("en-IN")}`}
-                            accent="yellow"
-                        />
+                                <StatCard
+                                    icon={Wallet}
+                                    label="Estimated Earnings"
+                                    value={`₹${earnings.toLocaleString("en-IN")}`}
+                                    accent="yellow"
+                                />
+                            </>
+                        )}
                     </section>
 
                     {/* Main Grid */}
@@ -159,44 +189,58 @@ export default function DoctorDashboard() {
                             </div>
 
                             <div className="divide-y divide-gray-800">
-                                {visibleAppointments.length === 0 && (
-                                    <p className="p-4 text-sm text-gray-400">
-                                        No appointments found
-                                    </p>
-                                )}
-
-                                {visibleAppointments.map((record) => (
-                                    <AppointmentRow
-                                        key={record.medicalRecordId}
-                                        record={record}
-                                        time={formatDate(
-                                            record.visitDate ||
-                                                record.createdDate,
+                                {loadingProfile ? (
+                                    <div className="p-8">
+                                        <AppointmentSkeleton />
+                                        <AppointmentSkeleton />
+                                        <AppointmentSkeleton />
+                                    </div>
+                                ) : (
+                                    <>
+                                        {visibleAppointments.length === 0 && (
+                                            <div className="p-8 text-center">
+                                                <p className="text-sm text-gray-400">
+                                                    No appointments found
+                                                </p>
+                                            </div>
                                         )}
-                                        patient={
-                                            record.patientName ?? "Patient"
-                                        }
-                                        type={
-                                            record.needTherapy
-                                                ? "Therapy Session"
-                                                : "Consultation"
-                                        }
-                                    />
-                                ))}
+
+                                        {visibleAppointments.map((record) => (
+                                            <AppointmentRow
+                                                key={record.medicalRecordId}
+                                                record={record}
+                                                time={formatDate(
+                                                    record.visitDate ||
+                                                        record.createdDate,
+                                                )}
+                                                patient={
+                                                    record.patientName ??
+                                                    "Patient"
+                                                }
+                                                type={
+                                                    record.needTherapy
+                                                        ? "Therapy Session"
+                                                        : "Consultation"
+                                                }
+                                            />
+                                        ))}
+                                    </>
+                                )}
                             </div>
 
-                            {sortedAppointments.length >= 1 && (
-                                <div className="p-4 text-center">
-                                    <button
-                                        onClick={() => setShowAll(!showAll)}
-                                        className="text-sm text-emerald-400 hover:underline"
-                                    >
-                                        {showAll
-                                            ? "Show less"
-                                            : "View all appointments"}
-                                    </button>
-                                </div>
-                            )}
+                            {!loadingProfile &&
+                                sortedAppointments.length >= 1 && (
+                                    <div className="p-4 text-center">
+                                        <button
+                                            onClick={() => setShowAll(!showAll)}
+                                            className="text-sm text-emerald-400 hover:underline"
+                                        >
+                                            {showAll
+                                                ? "Show less"
+                                                : "View all appointments"}
+                                        </button>
+                                    </div>
+                                )}
                         </section>
 
                         {/* Quick Actions */}
@@ -229,6 +273,33 @@ export default function DoctorDashboard() {
         </DoctorLayout>
     );
 }
+
+/* ---------------- Skeleton Components ---------------- */
+
+const StatCardSkeleton = () => (
+    <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 animate-pulse">
+        <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-gray-800 rounded-xl"></div>
+            <div className="flex-1">
+                <div className="h-3 bg-gray-800 rounded w-20 mb-2"></div>
+                <div className="h-6 bg-gray-800 rounded w-16"></div>
+            </div>
+        </div>
+    </div>
+);
+
+const AppointmentSkeleton = () => (
+    <div className="flex items-center justify-between p-4 animate-pulse">
+        <div className="flex-1">
+            <div className="h-4 bg-gray-800 rounded w-32 mb-2"></div>
+            <div className="h-3 bg-gray-800 rounded w-24"></div>
+        </div>
+        <div className="flex items-center gap-3">
+            <div className="h-6 bg-gray-800 rounded-full w-20"></div>
+            <div className="h-6 bg-gray-800 rounded w-12"></div>
+        </div>
+    </div>
+);
 
 /* ---------------- Small Components ---------------- */
 

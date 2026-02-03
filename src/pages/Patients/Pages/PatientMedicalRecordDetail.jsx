@@ -10,6 +10,7 @@ import {
     Brain,
     CheckCircle2,
     XCircle,
+    Loader2,
 } from "lucide-react";
 import api from "@/lib/axios";
 
@@ -40,20 +41,29 @@ export default function PatientMedicalRecordDetail() {
     const [search, setSearch] = useState("");
     const [selectedTherapist, setSelectedTherapist] = useState(null);
     const [saving, setSaving] = useState(false);
+    const [loadingTherapists, setLoadingTherapists] = useState(false);
+    const [loadingSlots, setLoadingSlots] = useState(false);
 
     useEffect(() => {
         if (!shouldSelectTherapist) return;
 
         const fetchTherapists = async () => {
-            const res = await api.get(`${gateway}/api/therapists`, {
-                headers: { Authorization: `Bearer ${auth.token}` },
-            });
-            setTherapists(res.data);
-            console.log("Therapists fetched : ", res.data);
+            try {
+                setLoadingTherapists(true);
+                const res = await api.get(`${gateway}/api/therapists`, {
+                    headers: { Authorization: `Bearer ${auth.token}` },
+                });
+                setTherapists(res.data);
+                console.log("Therapists fetched : ", res.data);
+            } catch (error) {
+                console.error("Failed to fetch therapists", error);
+            } finally {
+                setLoadingTherapists(false);
+            }
         };
 
         fetchTherapists();
-    }, [shouldSelectTherapist]);
+    }, [shouldSelectTherapist, gateway, auth.token]);
 
     const filteredTherapists = therapists?.filter((t) =>
         `${t.therapistName} ${t.expertise ?? ""}`
@@ -75,6 +85,7 @@ export default function PatientMedicalRecordDetail() {
 
         const fetchSlots = async () => {
             try {
+                setLoadingSlots(true);
                 const from = new Date().toISOString().split("T")[0];
                 const to = new Date(
                     new Date().setDate(new Date().getDate() + 30),
@@ -105,11 +116,18 @@ export default function PatientMedicalRecordDetail() {
                 setSlotsByDate(grouped);
             } catch (e) {
                 console.error("Failed to load slots", e);
+            } finally {
+                setLoadingSlots(false);
             }
         };
 
         fetchSlots();
-    }, [canBookSession]);
+    }, [
+        canBookSession,
+        gateway,
+        auth.token,
+        record?.therapistPlans?.therapistId,
+    ]);
 
     const bookSlot = async (slotId, therapyPlanId) => {
         try {
@@ -133,7 +151,7 @@ export default function PatientMedicalRecordDetail() {
             toast.success("Session booked successfully");
 
             setSelectedDate(null);
-            fetchRecord(); // refresh record
+            fetchRecord();
         } catch (e) {
             toast.error("Slot already booked");
         } finally {
@@ -154,6 +172,7 @@ export default function PatientMedicalRecordDetail() {
             console.error("Failed to fetch record", err);
         }
     };
+
     const saveTherapist = async () => {
         if (!selectedTherapist) return;
         try {
@@ -380,6 +399,8 @@ export default function PatientMedicalRecordDetail() {
                             </div>
                         </CardContent>
                     </Card>
+
+                    {/* SELECT THERAPIST - WITH LOADING */}
                     {shouldSelectTherapist && (
                         <Card className="bg-gray-900 border-gray-800">
                             <CardHeader className="space-y-4">
@@ -392,8 +413,11 @@ export default function PatientMedicalRecordDetail() {
                                         <button
                                             onClick={saveTherapist}
                                             disabled={saving}
-                                            className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-lg disabled:opacity-60"
+                                            className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-lg disabled:opacity-60 flex items-center gap-2"
                                         >
+                                            {saving && (
+                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                            )}
                                             {saving
                                                 ? "Saving..."
                                                 : "Save Therapist"}
@@ -406,56 +430,70 @@ export default function PatientMedicalRecordDetail() {
                                     onChange={(e) => setSearch(e.target.value)}
                                     placeholder="Search by name or expertise"
                                     className="px-3 py-2 bg-gray-800 text-white rounded w-full"
+                                    disabled={loadingTherapists}
                                 />
                             </CardHeader>
 
                             <CardContent className="space-y-3">
-                                {filteredTherapists.map((t) => (
-                                    <div
-                                        key={t.userId}
-                                        className={`grid grid-cols-4 gap-3 p-3 border rounded-lg transition
-                                        ${
-                                            selectedTherapist?.userId ===
-                                            t.userId
-                                                ? "border-emerald-500 bg-emerald-500/10"
-                                                : "border-gray-700"
-                                        }
-                                    `}
-                                    >
-                                        <p className="text-white font-semibold">
-                                            {t.therapistName}
-                                        </p>
+                                {loadingTherapists ? (
+                                    <div className="flex flex-col items-center justify-center py-8 gap-3">
+                                        <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
                                         <p className="text-gray-400">
-                                            {t.expertise || "General"}
+                                            Loading therapists...
                                         </p>
-                                        <p className="text-gray-400">
-                                            {t.yearsOfExperience
-                                                ? `${t.yearsOfExperience} yrs`
-                                                : "N/A"}
-                                        </p>
-
-                                        <button
-                                            disabled={!!selectedTherapist}
-                                            onClick={() =>
-                                                setSelectedTherapist(t)
-                                            }
-                                            className={`rounded px-3 py-1 text-white text-sm
-        ${
-            selectedTherapist?.userId === t.userId
-                ? "bg-emerald-600 cursor-default"
-                : selectedTherapist
-                  ? "bg-gray-600 cursor-not-allowed"
-                  : "bg-purple-600 hover:bg-purple-700"
-        }
-    `}
-                                        >
-                                            {selectedTherapist?.userId ===
-                                            t.userId
-                                                ? "Selected"
-                                                : "Select"}
-                                        </button>
                                     </div>
-                                ))}
+                                ) : filteredTherapists.length === 0 ? (
+                                    <div className="text-center py-8 text-gray-400">
+                                        No therapists found
+                                    </div>
+                                ) : (
+                                    filteredTherapists.map((t) => (
+                                        <div
+                                            key={t.userId}
+                                            className={`grid grid-cols-4 gap-3 p-3 border rounded-lg transition
+                                            ${
+                                                selectedTherapist?.userId ===
+                                                t.userId
+                                                    ? "border-emerald-500 bg-emerald-500/10"
+                                                    : "border-gray-700"
+                                            }
+                                        `}
+                                        >
+                                            <p className="text-white font-semibold">
+                                                {t.therapistName}
+                                            </p>
+                                            <p className="text-gray-400">
+                                                {t.expertise || "General"}
+                                            </p>
+                                            <p className="text-gray-400">
+                                                {t.yearsOfExperience
+                                                    ? `${t.yearsOfExperience} yrs`
+                                                    : "N/A"}
+                                            </p>
+
+                                            <button
+                                                disabled={!!selectedTherapist}
+                                                onClick={() =>
+                                                    setSelectedTherapist(t)
+                                                }
+                                                className={`rounded px-3 py-1 text-white text-sm
+            ${
+                selectedTherapist?.userId === t.userId
+                    ? "bg-emerald-600 cursor-default"
+                    : selectedTherapist
+                      ? "bg-gray-600 cursor-not-allowed"
+                      : "bg-purple-600 hover:bg-purple-700"
+            }
+        `}
+                                            >
+                                                {selectedTherapist?.userId ===
+                                                t.userId
+                                                    ? "Selected"
+                                                    : "Select"}
+                                            </button>
+                                        </div>
+                                    ))
+                                )}
                             </CardContent>
                         </Card>
                     )}
@@ -490,6 +528,7 @@ export default function PatientMedicalRecordDetail() {
                         </Card>
                     )}
 
+                    {/* BOOK SESSION - WITH LOADING */}
                     {canBookSession && (
                         <Card className="bg-gray-900 border-gray-800">
                             <CardHeader>
@@ -505,75 +544,106 @@ export default function PatientMedicalRecordDetail() {
                             </CardHeader>
 
                             <CardContent>
-                                {/* DATE SELECTOR */}
-                                <div className="flex flex-wrap gap-3 mb-6">
-                                    {Object.keys(slotsByDate).map((date) => (
-                                        <button
-                                            key={date}
-                                            onClick={() =>
-                                                setSelectedDate(date)
-                                            }
-                                            className={`px-4 py-2 rounded-lg border text-sm font-medium
-                        ${
-                            selectedDate === date
-                                ? "bg-green-600 border-green-600 text-white"
-                                : "bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700"
-                        }`}
-                                        >
-                                            {new Date(date).toLocaleDateString(
-                                                "en-IN",
-                                                {
-                                                    day: "numeric",
-                                                    month: "short",
-                                                },
-                                            )}
-                                        </button>
-                                    ))}
-                                </div>
-
-                                {/* SLOT LIST */}
-                                {selectedDate && (
-                                    <div className="space-y-3">
-                                        <h4 className="text-white font-semibold">
-                                            Available Slots on{" "}
-                                            {new Date(
-                                                selectedDate,
-                                            ).toLocaleDateString("en-IN", {
-                                                day: "numeric",
-                                                month: "long",
-                                                year: "numeric",
-                                            })}
-                                        </h4>
-
-                                        {slotsByDate[selectedDate].map(
-                                            (slot) => (
-                                                <div
-                                                    key={slot.slotId}
-                                                    className="flex items-center justify-between p-4 bg-gray-950/60 border border-gray-700 rounded-lg"
-                                                >
-                                                    <span className="text-white font-medium">
-                                                        {slot.startTime} –{" "}
-                                                        {slot.endTime}
-                                                    </span>
-
+                                {loadingSlots ? (
+                                    <div className="flex flex-col items-center justify-center py-12 gap-3">
+                                        <Loader2 className="w-8 h-8 text-green-400 animate-spin" />
+                                        <p className="text-gray-400">
+                                            Loading available slots...
+                                        </p>
+                                    </div>
+                                ) : Object.keys(slotsByDate).length === 0 ? (
+                                    <div className="text-center py-8 text-gray-400">
+                                        No slots available
+                                    </div>
+                                ) : (
+                                    <>
+                                        {/* DATE SELECTOR */}
+                                        <div className="flex flex-wrap gap-3 mb-6">
+                                            {Object.keys(slotsByDate).map(
+                                                (date) => (
                                                     <button
-                                                        disabled={booking}
+                                                        key={date}
                                                         onClick={() =>
-                                                            bookSlot(
-                                                                slot.slotId,
-                                                                record
-                                                                    .therapistPlans
-                                                                    .therapyPlanId,
+                                                            setSelectedDate(
+                                                                date,
                                                             )
                                                         }
-                                                        className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-1.5 rounded-lg text-sm disabled:opacity-60"
+                                                        className={`px-4 py-2 rounded-lg border text-sm font-medium
+                                    ${
+                                        selectedDate === date
+                                            ? "bg-green-600 border-green-600 text-white"
+                                            : "bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700"
+                                    }`}
                                                     >
-                                                        Book
+                                                        {new Date(
+                                                            date,
+                                                        ).toLocaleDateString(
+                                                            "en-IN",
+                                                            {
+                                                                day: "numeric",
+                                                                month: "short",
+                                                            },
+                                                        )}
                                                     </button>
-                                                </div>
-                                            ),
+                                                ),
+                                            )}
+                                        </div>
+
+                                        {/* SLOT LIST */}
+                                        {selectedDate && (
+                                            <div className="space-y-3">
+                                                <h4 className="text-white font-semibold">
+                                                    Available Slots on{" "}
+                                                    {new Date(
+                                                        selectedDate,
+                                                    ).toLocaleDateString(
+                                                        "en-IN",
+                                                        {
+                                                            day: "numeric",
+                                                            month: "long",
+                                                            year: "numeric",
+                                                        },
+                                                    )}
+                                                </h4>
+
+                                                {slotsByDate[selectedDate].map(
+                                                    (slot) => (
+                                                        <div
+                                                            key={slot.slotId}
+                                                            className="flex items-center justify-between p-4 bg-gray-950/60 border border-gray-700 rounded-lg"
+                                                        >
+                                                            <span className="text-white font-medium">
+                                                                {slot.startTime}{" "}
+                                                                – {slot.endTime}
+                                                            </span>
+
+                                                            <button
+                                                                disabled={
+                                                                    booking
+                                                                }
+                                                                onClick={() =>
+                                                                    bookSlot(
+                                                                        slot.slotId,
+                                                                        record
+                                                                            .therapistPlans
+                                                                            .therapyPlanId,
+                                                                    )
+                                                                }
+                                                                className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-1.5 rounded-lg text-sm disabled:opacity-60 flex items-center gap-2"
+                                                            >
+                                                                {booking && (
+                                                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                                                )}
+                                                                {booking
+                                                                    ? "Booking..."
+                                                                    : "Book"}
+                                                            </button>
+                                                        </div>
+                                                    ),
+                                                )}
+                                            </div>
                                         )}
-                                    </div>
+                                    </>
                                 )}
                             </CardContent>
                         </Card>

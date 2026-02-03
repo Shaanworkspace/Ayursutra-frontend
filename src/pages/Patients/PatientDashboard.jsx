@@ -14,6 +14,7 @@ import {
     ArrowRight,
     Sparkles,
     Plus,
+    Loader2,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -39,9 +40,6 @@ export default function PatientDashboard() {
     const user = storedUser ? JSON.parse(storedUser) : reduxUser;
     const roleU = localStorage.getItem("role") || reduxRole;
 
-    console.log("token :", auth.token);
-    console.log(reduxProfileRole, " : ", profile);
-    console.log(roleU, " :  ", user);
     const gateway = import.meta.env.VITE_API_GATEWAY_BASE_URL;
 
     const fname = user?.firstName || "";
@@ -50,6 +48,7 @@ export default function PatientDashboard() {
     const authUserId = user?.userId || user?.email;
     const [medicalRecords, setMedicalRecords] = useState([]);
     const [loadingRecords, setLoadingRecords] = useState(true);
+    const [loadingProfile, setLoadingProfile] = useState(false);
     const [showAllAppointments, setShowAllAppointments] = useState(false);
 
     const sortedAppointments = [...medicalRecords].sort(
@@ -136,7 +135,6 @@ export default function PatientDashboard() {
 
         const title = isTherapy ? "Therapy Session" : "Doctor Consultation";
 
-        console.log("reco : ", record);
         const name =
             record.therapistPlans?.length > 0
                 ? "Therapist Consultation"
@@ -144,7 +142,7 @@ export default function PatientDashboard() {
                   ? "Doctor Checked"
                   : "Waiting For Doctor Review";
 
-        const mode = "video"; // future me backend se aayega
+        const mode = "video";
 
         return (
             <div className="flex items-center justify-between p-4 hover:bg-gray-800/50 rounded-xl">
@@ -193,6 +191,7 @@ export default function PatientDashboard() {
 
     const fetchPatientProfile = () => {
         if (!shouldFetch) return;
+        setLoadingProfile(true);
         axios
             .get(`${gateway}/api/patients/profile/me`, {
                 headers: {
@@ -209,6 +208,9 @@ export default function PatientDashboard() {
             })
             .catch((error) => {
                 console.error("Error fetching patient profile:", error);
+            })
+            .finally(() => {
+                setLoadingProfile(false);
             });
     };
 
@@ -216,9 +218,18 @@ export default function PatientDashboard() {
         fetchPatientProfile();
     }, [shouldFetch]);
 
-    if (!profile) {
+    if (!profile && loadingProfile) {
         return (
-            <div className="text-white p-6">Loading patient dashboard...</div>
+            <PatientLayout>
+                <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+                    <div className="text-center">
+                        <Loader2 className="w-12 h-12 text-cyan-400 animate-spin mx-auto mb-4" />
+                        <p className="text-white text-lg">
+                            Loading patient dashboard...
+                        </p>
+                    </div>
+                </div>
+            </PatientLayout>
         );
     }
 
@@ -251,22 +262,32 @@ export default function PatientDashboard() {
 
                     {/* ================= QUICK STATS ================= */}
                     <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <StatCard
-                            title="Upcoming Sessions"
-                            value={upcomingSessions}
-                        />
-                        <StatCard
-                            title="Completed Sessions"
-                            value={completedSessions}
-                        />
-                        <StatCard
-                            title="Health Reports"
-                            value={healthReports}
-                        />
-                        <StatCard
-                            title="Wellness Score"
-                            value={`${wellnessScore} / 10`}
-                        />
+                        {loadingRecords ? (
+                            <>
+                                {[...Array(4)].map((_, i) => (
+                                    <StatCardSkeleton key={i} />
+                                ))}
+                            </>
+                        ) : (
+                            <>
+                                <StatCard
+                                    title="Upcoming Sessions"
+                                    value={upcomingSessions}
+                                />
+                                <StatCard
+                                    title="Completed Sessions"
+                                    value={completedSessions}
+                                />
+                                <StatCard
+                                    title="Health Reports"
+                                    value={healthReports}
+                                />
+                                <StatCard
+                                    title="Wellness Score"
+                                    value={`${wellnessScore} / 10`}
+                                />
+                            </>
+                        )}
                     </div>
 
                     {/* ================= MAIN GRID ================= */}
@@ -275,47 +296,61 @@ export default function PatientDashboard() {
                         <div className="lg:col-span-2 space-y-6">
                             {/* Appointments */}
                             <Card title="Appointments">
-                                {visibleAppointments.length === 0 && (
-                                    <p className="text-sm text-gray-400">
-                                        No appointments found
-                                    </p>
-                                )}
+                                {loadingRecords ? (
+                                    <div className="space-y-3">
+                                        <AppointmentSkeleton />
+                                        <AppointmentSkeleton />
+                                        <AppointmentSkeleton />
+                                    </div>
+                                ) : (
+                                    <>
+                                        {visibleAppointments.length === 0 && (
+                                            <p className="text-sm text-gray-400 text-center py-8">
+                                                No appointments found
+                                            </p>
+                                        )}
 
-                                <div
-                                    className={
-                                        showAllAppointments
-                                            ? "max-h-[420px] overflow-y-auto space-y-2 pr-2"
-                                            : "space-y-2"
-                                    }
-                                >
-                                    {visibleAppointments.map((record) => (
-                                        <PatientAppointmentRow
-                                            key={record.medicalRecordId}
-                                            record={record}
-                                        />
-                                    ))}
-                                </div>
-
-                                {sortedAppointments.length > 3 && (
-                                    <button
-                                        onClick={() =>
-                                            setShowAllAppointments(
-                                                (prev) => !prev,
-                                            )
-                                        }
-                                        className="flex justify-center items-center gap-2 text-sm text-cyan-400 hover:underline mt-4 w-full"
-                                    >
-                                        {showAllAppointments
-                                            ? "Show Less"
-                                            : "View All"}
-                                        <ArrowRight
-                                            className={`w-4 h-4 transition-transform ${
+                                        <div
+                                            className={
                                                 showAllAppointments
-                                                    ? "rotate-90"
-                                                    : ""
-                                            }`}
-                                        />
-                                    </button>
+                                                    ? "max-h-[420px] overflow-y-auto space-y-2 pr-2"
+                                                    : "space-y-2"
+                                            }
+                                        >
+                                            {visibleAppointments.map(
+                                                (record) => (
+                                                    <PatientAppointmentRow
+                                                        key={
+                                                            record.medicalRecordId
+                                                        }
+                                                        record={record}
+                                                    />
+                                                ),
+                                            )}
+                                        </div>
+
+                                        {sortedAppointments.length > 3 && (
+                                            <button
+                                                onClick={() =>
+                                                    setShowAllAppointments(
+                                                        (prev) => !prev,
+                                                    )
+                                                }
+                                                className="flex justify-center items-center gap-2 text-sm text-cyan-400 hover:underline mt-4 w-full"
+                                            >
+                                                {showAllAppointments
+                                                    ? "Show Less"
+                                                    : "View All"}
+                                                <ArrowRight
+                                                    className={`w-4 h-4 transition-transform ${
+                                                        showAllAppointments
+                                                            ? "rotate-90"
+                                                            : ""
+                                                    }`}
+                                                />
+                                            </button>
+                                        )}
+                                    </>
                                 )}
                             </Card>
 
@@ -355,18 +390,28 @@ export default function PatientDashboard() {
 
                             {/* Activity */}
                             <Card title="Recent Activity">
-                                <ActivityItem
-                                    icon={FileText}
-                                    text="New report uploaded"
-                                />
-                                <ActivityItem
-                                    icon={MessageSquare}
-                                    text="Doctor replied"
-                                />
-                                <ActivityItem
-                                    icon={Pill}
-                                    text="Medication reminder"
-                                />
+                                {loadingRecords ? (
+                                    <div className="space-y-2">
+                                        <ActivitySkeleton />
+                                        <ActivitySkeleton />
+                                        <ActivitySkeleton />
+                                    </div>
+                                ) : (
+                                    <>
+                                        <ActivityItem
+                                            icon={FileText}
+                                            text="New report uploaded"
+                                        />
+                                        <ActivityItem
+                                            icon={MessageSquare}
+                                            text="Doctor replied"
+                                        />
+                                        <ActivityItem
+                                            icon={Pill}
+                                            text="Medication reminder"
+                                        />
+                                    </>
+                                )}
                             </Card>
 
                             {/* Health Score */}
@@ -377,16 +422,25 @@ export default function PatientDashboard() {
                                     </h3>
                                     <Activity className="w-6 h-6 opacity-80" />
                                 </div>
-                                <p className="text-5xl font-bold">
-                                    {wellnessScore}
-                                    <span className="text-xl opacity-70">
-                                        /10
-                                    </span>
-                                </p>
-                                <div className="flex items-center gap-2 mt-2 text-sm">
-                                    <TrendingUp className="w-4 h-4" />
-                                    Improving this month
-                                </div>
+                                {loadingRecords ? (
+                                    <div className="animate-pulse">
+                                        <div className="h-16 bg-white/20 rounded w-32 mb-2"></div>
+                                        <div className="h-4 bg-white/20 rounded w-40"></div>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <p className="text-5xl font-bold">
+                                            {wellnessScore}
+                                            <span className="text-xl opacity-70">
+                                                /10
+                                            </span>
+                                        </p>
+                                        <div className="flex items-center gap-2 mt-2 text-sm">
+                                            <TrendingUp className="w-4 h-4" />
+                                            Improving this month
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -395,6 +449,36 @@ export default function PatientDashboard() {
         </PatientLayout>
     );
 }
+
+/* ================= SKELETON COMPONENTS ================= */
+
+const StatCardSkeleton = () => (
+    <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 animate-pulse">
+        <div className="h-4 bg-gray-700 rounded w-24 mb-2"></div>
+        <div className="h-8 bg-gray-700 rounded w-16"></div>
+    </div>
+);
+
+const AppointmentSkeleton = () => (
+    <div className="flex items-center justify-between p-4 bg-gray-800/30 rounded-xl animate-pulse">
+        <div className="flex-1">
+            <div className="h-4 bg-gray-700 rounded w-32 mb-2"></div>
+            <div className="h-3 bg-gray-700 rounded w-24 mb-1"></div>
+            <div className="h-3 bg-gray-700 rounded w-20"></div>
+        </div>
+        <div className="flex items-center gap-3">
+            <div className="h-6 bg-gray-700 rounded-full w-16"></div>
+            <div className="h-6 bg-gray-700 rounded w-12"></div>
+        </div>
+    </div>
+);
+
+const ActivitySkeleton = () => (
+    <div className="flex items-center gap-3 p-3 rounded-lg animate-pulse">
+        <div className="w-4 h-4 bg-gray-700 rounded"></div>
+        <div className="h-3 bg-gray-700 rounded w-32"></div>
+    </div>
+);
 
 /* ================= SUB COMPONENTS ================= */
 
@@ -412,30 +496,6 @@ const StatCard = ({ title, value }) => (
     </div>
 );
 
-const AppointmentItem = ({ name, type, time, mode }) => (
-    <div className="flex justify-between items-center p-4 rounded-xl bg-gray-800/60 border border-gray-700">
-        <div>
-            <p className="font-medium">{name}</p>
-            <p className="text-sm text-gray-400">{type}</p>
-            <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
-                <Clock className="w-3 h-3" />
-                {time}
-            </p>
-        </div>
-        <div className="flex items-center gap-2 text-xs px-2 py-1 rounded-full bg-gray-700">
-            {mode === "video" ? (
-                <>
-                    <Video className="w-3 h-3" /> Video
-                </>
-            ) : (
-                <>
-                    <MapPin className="w-3 h-3" /> In-person
-                </>
-            )}
-        </div>
-    </div>
-);
-
 const WellnessItem = ({ icon: Icon, title, desc }) => (
     <div className="flex gap-4 p-4 bg-gray-800/60 rounded-xl border border-gray-700">
         <div className="p-2 bg-cyan-900/40 rounded-lg">
@@ -449,7 +509,7 @@ const WellnessItem = ({ icon: Icon, title, desc }) => (
 );
 
 const QuickAction = ({ icon: Icon, label }) => (
-    <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-800/60 border border-gray-700 hover:bg-gray-800 transition">
+    <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-800/60 border border-gray-700 hover:bg-gray-800 transition cursor-pointer">
         <Icon className="w-5 h-5 text-cyan-400" />
         <span className="text-sm">{label}</span>
     </div>

@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-vars */
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import {
     User,
     Mail,
@@ -39,14 +39,34 @@ import {
     Settings,
     HelpCircle,
     Sparkles,
+    Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PatientLayout } from "../components/PatientLayout";
+import axios from "@/lib/axios";
+import { setProfile } from "@/Store/Slices/profileSlice";
+import { toast } from "sonner";
 
 export const PatientProfile = () => {
-    const user = useSelector((state) => state.auth.userResponse);
+    const dispatch = useDispatch();
     const fileInputRef = useRef(null);
-    const profile = useSelector((state) => state.profile.data);
+
+    // Redux state
+    const reduxUser = useSelector((state) => state.auth.userResponse);
+    const reduxProfile = useSelector((state) => state.profile.data);
+    const auth = useSelector((state) => state.auth);
+
+    // Local storage fallback
+    const storedProfile = localStorage.getItem("profile");
+    const storedUser = localStorage.getItem("userResponse");
+
+    const profile = storedProfile
+        ? JSON.parse(storedProfile).data
+        : reduxProfile;
+    const user = storedUser ? JSON.parse(storedUser) : reduxUser;
+
+    const gateway = import.meta.env.VITE_API_GATEWAY_BASE_URL;
+
     console.log("Profile : ", profile);
     console.log("user : ", user);
 
@@ -56,6 +76,7 @@ export const PatientProfile = () => {
     const [showPassword, setShowPassword] = useState(false);
     const [avatarPreview, setAvatarPreview] = useState(null);
     const [saveStatus, setSaveStatus] = useState(null);
+    const [loadingProfile, setLoadingProfile] = useState(false);
 
     const [profileData, setProfileData] = useState({
         patientId: profile?.userId || "",
@@ -81,6 +102,69 @@ export const PatientProfile = () => {
             wellness: false,
         },
     });
+
+    // Fetch patient profile
+    useEffect(() => {
+        if (!auth.token || !user) return;
+
+        const shouldFetch =
+            profile?.email !== user?.email || !profile?.phoneNumber;
+
+        if (shouldFetch) {
+            const fetchPatientProfile = async () => {
+                try {
+                    setLoadingProfile(true);
+                    const res = await axios.get(
+                        `${gateway}/api/patients/profile/me`,
+                        {
+                            headers: {
+                                Authorization: `Bearer ${auth.token}`,
+                            },
+                        },
+                    );
+                    dispatch(
+                        setProfile({
+                            role: "PATIENT",
+                            data: res.data,
+                        }),
+                    );
+
+                    // Update profile data
+                    setProfileData({
+                        patientId: res.data.userId,
+                        firstName: user?.firstName || "",
+                        lastName: user?.lastName || "",
+                        email: user?.email || "",
+                        phone: res.data.phoneNumber || "",
+                        dateOfBirth: res.data.dateOfBirth || "",
+                        gender: res.data.gender || "",
+                        address: res.data.address || "",
+                        bloodGroup: res.data.bloodGroup || "",
+                        height: res.data.height || "",
+                        weight: res.data.weight || "",
+                        emergencyName: res.data.emergencyName || "",
+                        emergencyRelation: res.data.emergencyRelation || "",
+                        emergencyPhone: res.data.emergencyPhone || "",
+                        notifications: {
+                            email: true,
+                            sms: true,
+                            push: true,
+                            appointments: true,
+                            reports: true,
+                            wellness: false,
+                        },
+                    });
+                } catch (error) {
+                    console.error("Error fetching patient profile:", error);
+                    toast.error("Failed to load profile");
+                } finally {
+                    setLoadingProfile(false);
+                }
+            };
+
+            fetchPatientProfile();
+        }
+    }, [auth.token, user?.email, profile?.email, gateway, dispatch]);
 
     // Calculate profile completion
     const calculateCompletion = () => {
@@ -148,13 +232,23 @@ export const PatientProfile = () => {
     const handleSave = async () => {
         setSaveStatus("saving");
         try {
-            // Simulate API call
-            await new Promise((resolve) => setTimeout(resolve, 1500));
+            await axios.put(
+                `${gateway}/api/patients/profile/update`,
+                profileData,
+                {
+                    headers: {
+                        Authorization: `Bearer ${auth.token}`,
+                    },
+                },
+            );
             setSaveStatus("saved");
             setIsEditing(false);
+            toast.success("Profile updated successfully!");
             setTimeout(() => setSaveStatus(null), 3000);
         } catch (error) {
+            console.error("Error saving profile:", error);
             setSaveStatus("error");
+            toast.error("Failed to update profile");
             setTimeout(() => setSaveStatus(null), 3000);
         }
     };
@@ -163,7 +257,6 @@ export const PatientProfile = () => {
     const handleCancel = () => {
         setIsEditing(false);
         setAvatarPreview(null);
-        // Reset to original data if needed
     };
 
     // Documents data
@@ -194,17 +287,30 @@ export const PatientProfile = () => {
         },
     ];
 
+    if (loadingProfile) {
+        return (
+            <PatientLayout>
+                <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+                    <div className="text-center">
+                        <Loader2 className="w-12 h-12 text-cyan-400 animate-spin mx-auto mb-4" />
+                        <p className="text-white text-lg">Loading profile...</p>
+                    </div>
+                </div>
+            </PatientLayout>
+        );
+    }
+
     return (
         <PatientLayout>
-            <div className="p-6 lg:p-8">
-                <div className="max-w-7xl mx-auto space-y-6  mt-20">
+            <div className="min-h-screen bg-gray-950 text-gray-100 p-6 pt-28">
+                <div className="max-w-7xl mx-auto space-y-6">
                     {/* ==================== HEADER ==================== */}
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                         <div>
-                            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+                            <h1 className="text-3xl font-bold text-white">
                                 My Profile
                             </h1>
-                            <p className="text-gray-600 dark:text-gray-400 mt-1">
+                            <p className="text-gray-400 mt-1">
                                 Manage your personal information and preferences
                             </p>
                         </div>
@@ -214,15 +320,15 @@ export const PatientProfile = () => {
                             <div
                                 className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
                                     saveStatus === "saving"
-                                        ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
+                                        ? "bg-blue-900/30 text-blue-400"
                                         : saveStatus === "saved"
-                                          ? "bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400"
-                                          : "bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400"
+                                          ? "bg-green-900/30 text-green-400"
+                                          : "bg-red-900/30 text-red-400"
                                 }`}
                             >
                                 {saveStatus === "saving" && (
                                     <>
-                                        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                        <Loader2 className="w-4 h-4 animate-spin" />
                                         <span className="text-sm font-medium">
                                             Saving...
                                         </span>
@@ -249,7 +355,7 @@ export const PatientProfile = () => {
                     </div>
 
                     {/* ==================== PROFILE CARD ==================== */}
-                    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                    <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
                         {/* Profile Header Banner */}
                         <div className="h-32 bg-gradient-to-r from-cyan-500 via-teal-500 to-emerald-500 relative">
                             <div className="absolute inset-0 bg-black/10" />
@@ -261,7 +367,7 @@ export const PatientProfile = () => {
                             <div className="flex flex-col sm:flex-row sm:items-end gap-4 -mt-16 relative z-10">
                                 {/* Avatar */}
                                 <div className="relative group">
-                                    <div className="w-32 h-32 rounded-2xl border-4 border-white dark:border-gray-900 shadow-xl overflow-hidden bg-gradient-to-br from-cyan-400 to-teal-500">
+                                    <div className="w-32 h-32 rounded-2xl border-4 border-gray-900 shadow-xl overflow-hidden bg-gradient-to-br from-cyan-400 to-teal-500">
                                         {avatarPreview ? (
                                             <img
                                                 src={avatarPreview}
@@ -284,9 +390,9 @@ export const PatientProfile = () => {
                                             onClick={() =>
                                                 fileInputRef.current?.click()
                                             }
-                                            className="absolute bottom-2 right-2 p-2 bg-white dark:bg-gray-800 rounded-full shadow-lg hover:scale-110 transition-transform"
+                                            className="absolute bottom-2 right-2 p-2 bg-gray-800 rounded-full shadow-lg hover:scale-110 transition-transform"
                                         >
-                                            <Camera className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                                            <Camera className="w-4 h-4 text-gray-400" />
                                         </button>
                                     )}
                                     <input
@@ -303,24 +409,25 @@ export const PatientProfile = () => {
                                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                                         <div>
                                             <div className="flex items-center gap-2 mb-3">
-                                                <h2 className="text-4xl font-bold text-gray-900 dark:text-gray-100">
+                                                <h2 className="text-4xl font-bold text-white">
                                                     {profileData.firstName}{" "}
                                                     {profileData.lastName}
                                                 </h2>
                                                 <BadgeCheck className="w-6 h-6 text-cyan-500" />
                                             </div>
-                                            <p className="text-gray-600 dark:text-gray-400 mt-1">
+                                            <p className="text-gray-400 mt-1">
                                                 Patient ID:{" "}
                                                 {profileData.patientId}
                                             </p>
-                                            <div className="flex items-center gap-4 mt-2 text-sm text-gray-500 dark:text-gray-400">
+                                            <div className="flex items-center gap-4 mt-2 text-sm text-gray-400">
                                                 <span className="flex items-center gap-1">
                                                     <Mail className="w-4 h-4" />
                                                     {profileData.email}
                                                 </span>
                                                 <span className="flex items-center gap-1">
                                                     <Phone className="w-4 h-4" />
-                                                    {profileData.phone}
+                                                    {profileData.phone ||
+                                                        "Not provided"}
                                                 </span>
                                             </div>
                                         </div>
@@ -343,6 +450,7 @@ export const PatientProfile = () => {
                                                     <Button
                                                         variant="outline"
                                                         onClick={handleCancel}
+                                                        className="border-gray-700 text-gray-300 hover:bg-gray-800"
                                                     >
                                                         <X className="w-4 h-4 mr-2" />
                                                         Cancel
@@ -354,6 +462,7 @@ export const PatientProfile = () => {
                                                     onClick={() =>
                                                         setIsEditing(true)
                                                     }
+                                                    className="border-gray-700 text-gray-300 hover:bg-gray-800"
                                                 >
                                                     <Edit2 className="w-4 h-4 mr-2" />
                                                     Edit Profile
@@ -365,19 +474,19 @@ export const PatientProfile = () => {
                             </div>
 
                             {/* Profile Completion */}
-                            <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
+                            <div className="mt-6 p-4 bg-gray-800/50 rounded-xl">
                                 <div className="flex items-center justify-between mb-2">
                                     <div className="flex items-center gap-2">
                                         <Sparkles className="w-5 h-5 text-cyan-500" />
-                                        <span className="font-medium text-gray-900 dark:text-gray-100">
+                                        <span className="font-medium text-white">
                                             Profile Completion
                                         </span>
                                     </div>
-                                    <span className="text-sm font-bold text-cyan-600 dark:text-cyan-400">
+                                    <span className="text-sm font-bold text-cyan-400">
                                         {profileCompletion}%
                                     </span>
                                 </div>
-                                <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
                                     <div
                                         className="h-full bg-gradient-to-r from-cyan-500 to-teal-500 rounded-full transition-all duration-500"
                                         style={{
@@ -386,7 +495,7 @@ export const PatientProfile = () => {
                                     />
                                 </div>
                                 {profileCompletion < 100 && (
-                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                                    <p className="text-sm text-gray-400 mt-2">
                                         Complete your profile to get
                                         personalized health recommendations
                                     </p>
@@ -396,9 +505,9 @@ export const PatientProfile = () => {
                     </div>
 
                     {/* ==================== TABS & CONTENT ==================== */}
-                    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                    <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
                         {/* Tabs Navigation */}
-                        <div className="border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
+                        <div className="border-b border-gray-800 overflow-x-auto">
                             <div className="flex min-w-max">
                                 {tabs.map((tab) => (
                                     <button
@@ -406,8 +515,8 @@ export const PatientProfile = () => {
                                         onClick={() => setActiveTab(tab.id)}
                                         className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
                                             activeTab === tab.id
-                                                ? "border-cyan-500 text-cyan-600 dark:text-cyan-400 bg-cyan-50/50 dark:bg-cyan-900/20"
-                                                : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                                                ? "border-cyan-500 text-cyan-400 bg-cyan-900/20"
+                                                : "border-transparent text-gray-400 hover:text-gray-200 hover:bg-gray-800/50"
                                         }`}
                                     >
                                         <tab.icon className="w-4 h-4" />
@@ -462,29 +571,29 @@ export const PatientProfile = () => {
                     </div>
 
                     {/* ==================== DANGER ZONE ==================== */}
-                    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-red-200 dark:border-red-900/50 shadow-sm overflow-hidden">
+                    <div className="bg-gray-900 border border-red-900/50 rounded-2xl overflow-hidden">
                         <div className="p-6">
                             <div className="flex items-start gap-4">
-                                <div className="p-3 bg-red-100 dark:bg-red-900/30 rounded-xl">
-                                    <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400" />
+                                <div className="p-3 bg-red-900/30 rounded-xl">
+                                    <AlertTriangle className="w-6 h-6 text-red-400" />
                                 </div>
                                 <div className="flex-1">
-                                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                                    <h3 className="text-lg font-semibold text-white">
                                         Danger Zone
                                     </h3>
-                                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                    <p className="text-sm text-gray-400 mt-1">
                                         Irreversible and destructive actions
                                     </p>
                                     <div className="flex flex-wrap gap-3 mt-4">
                                         <Button
                                             variant="outline"
-                                            className="text-red-600 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-900/20"
+                                            className="text-red-400 border-red-800 hover:bg-red-900/20"
                                         >
                                             Download My Data
                                         </Button>
                                         <Button
                                             variant="outline"
-                                            className="text-red-600 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-900/20"
+                                            className="text-red-400 border-red-800 hover:bg-red-900/20"
                                         >
                                             Deactivate Account
                                         </Button>
@@ -585,38 +694,6 @@ const PersonalInfoTab = ({ profileData, isEditing, onChange }) => (
                         icon={MapPin}
                     />
                 </div>
-                <ProfileInput
-                    label="City"
-                    name="city"
-                    value={profileData.city}
-                    isEditing={isEditing}
-                    onChange={onChange}
-                    icon={MapPin}
-                />
-                <ProfileInput
-                    label="State/Province"
-                    name="state"
-                    value={profileData.state}
-                    isEditing={isEditing}
-                    onChange={onChange}
-                    icon={MapPin}
-                />
-                <ProfileInput
-                    label="ZIP/Postal Code"
-                    name="zipCode"
-                    value={profileData.zipCode}
-                    isEditing={isEditing}
-                    onChange={onChange}
-                    icon={MapPin}
-                />
-                <ProfileInput
-                    label="Country"
-                    name="country"
-                    value={profileData.country}
-                    isEditing={isEditing}
-                    onChange={onChange}
-                    icon={Globe}
-                />
             </div>
         </ProfileSection>
 
@@ -665,19 +742,23 @@ const MedicalInfoTab = ({ profileData, isEditing, onChange }) => (
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 <VitalCard
                     label="Blood Group"
-                    value={profileData.bloodGroup}
+                    value={profileData.bloodGroup || "N/A"}
                     icon={Droplets}
                     color="red"
                 />
                 <VitalCard
                     label="Height"
-                    value={profileData.height}
+                    value={
+                        profileData.height ? `${profileData.height} cm` : "N/A"
+                    }
                     icon={Ruler}
                     color="blue"
                 />
                 <VitalCard
                     label="Weight"
-                    value={profileData.weight}
+                    value={
+                        profileData.weight ? `${profileData.weight} kg` : "N/A"
+                    }
                     icon={Weight}
                     color="green"
                 />
@@ -691,71 +772,58 @@ const MedicalInfoTab = ({ profileData, isEditing, onChange }) => (
             </div>
         </ProfileSection>
 
-        {/* Medical History */}
-        <ProfileSection title="Medical History" icon={Stethoscope}>
+        {/* Medical Details */}
+        <ProfileSection title="Medical Details" icon={Stethoscope}>
             <div className="grid sm:grid-cols-2 gap-6">
-                <ProfileTextarea
-                    label="Known Allergies"
-                    name="allergies"
-                    value={profileData.allergies}
-                    isEditing={isEditing}
-                    onChange={onChange}
-                    placeholder="List any known allergies..."
-                />
-                <ProfileTextarea
-                    label="Chronic Conditions"
-                    name="chronicConditions"
-                    value={profileData.chronicConditions}
-                    isEditing={isEditing}
-                    onChange={onChange}
-                    placeholder="List any chronic conditions..."
-                />
-                <ProfileTextarea
-                    label="Current Medications"
-                    name="currentMedications"
-                    value={profileData.currentMedications}
-                    isEditing={isEditing}
-                    onChange={onChange}
-                    placeholder="List current medications..."
-                />
-                <ProfileTextarea
-                    label="Family Medical History"
-                    name="familyHistory"
-                    value={profileData.familyHistory}
-                    isEditing={isEditing}
-                    onChange={onChange}
-                    placeholder="Relevant family history..."
-                />
-            </div>
-        </ProfileSection>
-
-        {/* Insurance Information */}
-        <ProfileSection title="Insurance Information" icon={Shield}>
-            <div className="grid sm:grid-cols-2 gap-6">
-                <ProfileInput
-                    label="Insurance Provider"
-                    name="insuranceProvider"
-                    value={profileData.insuranceProvider}
-                    isEditing={isEditing}
-                    onChange={onChange}
-                    icon={CreditCard}
-                />
-                <ProfileInput
-                    label="Policy Number"
-                    name="insuranceNumber"
-                    value={profileData.insuranceNumber}
-                    isEditing={isEditing}
-                    onChange={onChange}
-                    icon={FileText}
-                />
-                <ProfileInput
-                    label="Primary Physician"
-                    name="primaryPhysician"
-                    value={profileData.primaryPhysician}
-                    isEditing={isEditing}
-                    onChange={onChange}
-                    icon={Stethoscope}
-                />
+                {isEditing ? (
+                    <>
+                        <ProfileInput
+                            label="Blood Group"
+                            name="bloodGroup"
+                            value={profileData.bloodGroup}
+                            isEditing={isEditing}
+                            onChange={onChange}
+                            icon={Droplets}
+                        />
+                        <ProfileInput
+                            label="Height (cm)"
+                            name="height"
+                            type="number"
+                            value={profileData.height}
+                            isEditing={isEditing}
+                            onChange={onChange}
+                            icon={Ruler}
+                        />
+                        <ProfileInput
+                            label="Weight (kg)"
+                            name="weight"
+                            type="number"
+                            value={profileData.weight}
+                            isEditing={isEditing}
+                            onChange={onChange}
+                            icon={Weight}
+                        />
+                    </>
+                ) : (
+                    <div className="col-span-2 text-gray-400">
+                        <p>
+                            Blood Group:{" "}
+                            {profileData.bloodGroup || "Not provided"}
+                        </p>
+                        <p>
+                            Height:{" "}
+                            {profileData.height
+                                ? `${profileData.height} cm`
+                                : "Not provided"}
+                        </p>
+                        <p>
+                            Weight:{" "}
+                            {profileData.weight
+                                ? `${profileData.weight} kg`
+                                : "Not provided"}
+                        </p>
+                    </div>
+                )}
             </div>
         </ProfileSection>
     </div>
@@ -765,26 +833,29 @@ const MedicalInfoTab = ({ profileData, isEditing, onChange }) => (
 const DocumentsTab = ({ documents }) => (
     <div className="space-y-6">
         {/* Upload Section */}
-        <div className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-8 text-center hover:border-cyan-500 dark:hover:border-cyan-500 transition-colors">
+        <div className="border-2 border-dashed border-gray-700 rounded-xl p-8 text-center hover:border-cyan-500 transition-colors">
             <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+            <h3 className="text-lg font-medium text-white mb-2">
                 Upload Documents
             </h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+            <p className="text-sm text-gray-400 mb-4">
                 Drag and drop files here, or click to browse
             </p>
-            <Button variant="outline">
+            <Button
+                variant="outline"
+                className="border-gray-700 text-gray-300 hover:bg-gray-800"
+            >
                 <Upload className="w-4 h-4 mr-2" />
                 Choose Files
             </Button>
-            <p className="text-xs text-gray-400 mt-3">
+            <p className="text-xs text-gray-500 mt-3">
                 Supports: PDF, JPG, PNG up to 10MB
             </p>
         </div>
 
         {/* Documents List */}
         <div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+            <h3 className="text-lg font-semibold text-white mb-4">
                 Your Documents ({documents.length})
             </h3>
             <div className="space-y-3">
@@ -803,19 +874,19 @@ const SecurityTab = ({ showPassword, setShowPassword }) => (
         <ProfileSection title="Password" icon={Lock}>
             <div className="space-y-4 max-w-md">
                 <div className="relative">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
                         Current Password
                     </label>
                     <div className="relative">
                         <input
                             type={showPassword ? "text" : "password"}
                             placeholder="Enter current password"
-                            className="w-full px-4 py-3 pr-12 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400 outline-none"
+                            className="w-full px-4 py-3 pr-12 bg-gray-800 border border-gray-700 rounded-xl text-gray-100 focus:ring-2 focus:ring-cyan-500 outline-none"
                         />
                         <button
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
                         >
                             {showPassword ? (
                                 <EyeOff className="w-5 h-5" />
@@ -826,23 +897,23 @@ const SecurityTab = ({ showPassword, setShowPassword }) => (
                     </div>
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
                         New Password
                     </label>
                     <input
                         type="password"
                         placeholder="Enter new password"
-                        className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400 outline-none"
+                        className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-gray-100 focus:ring-2 focus:ring-cyan-500 outline-none"
                     />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
                         Confirm New Password
                     </label>
                     <input
                         type="password"
                         placeholder="Confirm new password"
-                        className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400 outline-none"
+                        className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-gray-100 focus:ring-2 focus:ring-cyan-500 outline-none"
                     />
                 </div>
                 <Button className="bg-cyan-600 hover:bg-cyan-700">
@@ -853,21 +924,26 @@ const SecurityTab = ({ showPassword, setShowPassword }) => (
 
         {/* Two-Factor Authentication */}
         <ProfileSection title="Two-Factor Authentication" icon={Shield}>
-            <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
+            <div className="flex items-center justify-between p-4 bg-gray-800/50 rounded-xl">
                 <div className="flex items-center gap-4">
-                    <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-xl">
-                        <Shield className="w-6 h-6 text-green-600 dark:text-green-400" />
+                    <div className="p-3 bg-green-900/30 rounded-xl">
+                        <Shield className="w-6 h-6 text-green-400" />
                     </div>
                     <div>
-                        <p className="font-medium text-gray-900 dark:text-gray-100">
+                        <p className="font-medium text-white">
                             Two-Factor Authentication
                         </p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                        <p className="text-sm text-gray-400">
                             Add an extra layer of security to your account
                         </p>
                     </div>
                 </div>
-                <Button variant="outline">Enable</Button>
+                <Button
+                    variant="outline"
+                    className="border-gray-700 text-gray-300 hover:bg-gray-800"
+                >
+                    Enable
+                </Button>
             </div>
         </ProfileSection>
 
@@ -900,7 +976,7 @@ const PreferencesTab = ({ profileData, isEditing, onChange }) => (
                 <ProfileSelect
                     label="Language"
                     name="language"
-                    value={profileData.language}
+                    value={profileData.language || "English"}
                     options={[
                         "English",
                         "Hindi",
@@ -915,7 +991,7 @@ const PreferencesTab = ({ profileData, isEditing, onChange }) => (
                 <ProfileSelect
                     label="Timezone"
                     name="timezone"
-                    value={profileData.timezone}
+                    value={profileData.timezone || "America/Los_Angeles"}
                     options={[
                         "America/Los_Angeles",
                         "America/New_York",
@@ -995,15 +1071,13 @@ const ProfileSection = ({
             <div
                 className={`p-2 rounded-lg ${
                     variant === "warning"
-                        ? "bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400"
-                        : "bg-cyan-100 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400"
+                        ? "bg-amber-900/30 text-amber-400"
+                        : "bg-cyan-900/30 text-cyan-400"
                 }`}
             >
                 <Icon className="w-5 h-5" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                {title}
-            </h3>
+            <h3 className="text-lg font-semibold text-white">{title}</h3>
         </div>
         {children}
     </div>
@@ -1021,7 +1095,7 @@ const ProfileInput = ({
     placeholder,
 }) => (
     <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+        <label className="block text-sm font-medium text-gray-300 mb-2">
             {label}
         </label>
         {isEditing ? (
@@ -1035,17 +1109,15 @@ const ProfileInput = ({
                     value={value}
                     onChange={onChange}
                     placeholder={placeholder}
-                    className={`w-full py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400 outline-none text-gray-900 dark:text-gray-100 ${
+                    className={`w-full py-3 bg-gray-800 border border-gray-700 rounded-xl focus:ring-2 focus:ring-cyan-500 outline-none text-gray-100 ${
                         Icon ? "pl-12 pr-4" : "px-4"
                     }`}
                 />
             </div>
         ) : (
-            <div className="flex items-center gap-3 py-3 px-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
+            <div className="flex items-center gap-3 py-3 px-4 bg-gray-800/50 rounded-xl">
                 {Icon && <Icon className="w-5 h-5 text-gray-400" />}
-                <span className="text-gray-900 dark:text-gray-100">
-                    {value || "Not provided"}
-                </span>
+                <span className="text-gray-100">{value || "Not provided"}</span>
             </div>
         )}
     </div>
@@ -1062,7 +1134,7 @@ const ProfileSelect = ({
     icon: Icon,
 }) => (
     <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+        <label className="block text-sm font-medium text-gray-300 mb-2">
             {label}
         </label>
         {isEditing ? (
@@ -1074,7 +1146,7 @@ const ProfileSelect = ({
                     name={name}
                     value={value}
                     onChange={onChange}
-                    className={`w-full py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400 outline-none text-gray-900 dark:text-gray-100 appearance-none ${
+                    className={`w-full py-3 bg-gray-800 border border-gray-700 rounded-xl focus:ring-2 focus:ring-cyan-500 outline-none text-gray-100 appearance-none ${
                         Icon ? "pl-12 pr-4" : "px-4"
                     }`}
                 >
@@ -1086,43 +1158,9 @@ const ProfileSelect = ({
                 </select>
             </div>
         ) : (
-            <div className="flex items-center gap-3 py-3 px-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
+            <div className="flex items-center gap-3 py-3 px-4 bg-gray-800/50 rounded-xl">
                 {Icon && <Icon className="w-5 h-5 text-gray-400" />}
-                <span className="text-gray-900 dark:text-gray-100">
-                    {value}
-                </span>
-            </div>
-        )}
-    </div>
-);
-
-// Profile Textarea
-const ProfileTextarea = ({
-    label,
-    name,
-    value,
-    isEditing,
-    onChange,
-    placeholder,
-}) => (
-    <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            {label}
-        </label>
-        {isEditing ? (
-            <textarea
-                name={name}
-                value={value}
-                onChange={onChange}
-                placeholder={placeholder}
-                rows={3}
-                className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-cyan-500 dark:focus:ring-cyan-400 outline-none text-gray-900 dark:text-gray-100 resize-none"
-            />
-        ) : (
-            <div className="py-3 px-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl min-h-[80px]">
-                <span className="text-gray-900 dark:text-gray-100">
-                    {value || "Not provided"}
-                </span>
+                <span className="text-gray-100">{value}</span>
             </div>
         )}
     </div>
@@ -1131,27 +1169,25 @@ const ProfileTextarea = ({
 // Vital Card
 const VitalCard = ({ label, value, icon: Icon, color, subtext }) => {
     const colorClasses = {
-        red: "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400",
-        blue: "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400",
-        green: "bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400",
-        purple: "bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400",
+        red: "bg-red-900/30 text-red-400",
+        blue: "bg-blue-900/30 text-blue-400",
+        green: "bg-green-900/30 text-green-400",
+        purple: "bg-purple-900/30 text-purple-400",
     };
 
     return (
-        <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl text-center">
+        <div className="p-4 bg-gray-800/50 rounded-xl text-center">
             <div
                 className={`inline-flex p-3 rounded-xl ${colorClasses[color]} mb-3`}
             >
                 <Icon className="w-6 h-6" />
             </div>
-            <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                {value}
-            </p>
-            <p className="text-sm text-gray-500 dark:text-gray-400">{label}</p>
+            <p className="text-2xl font-bold text-white">{value}</p>
+            <p className="text-sm text-gray-400">{label}</p>
             {subtext && (
                 <p
                     className={`text-xs mt-1 ${
-                        colorClasses[color].split(" ")[2]
+                        colorClasses[color].split(" ")[1]
                     }`}
                 >
                     {subtext}
@@ -1163,16 +1199,14 @@ const VitalCard = ({ label, value, icon: Icon, color, subtext }) => {
 
 // Document Card
 const DocumentCard = ({ name, date, type, size }) => (
-    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+    <div className="flex items-center justify-between p-4 bg-gray-800/50 rounded-xl hover:bg-gray-800 transition-colors">
         <div className="flex items-center gap-4">
-            <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
-                <FileText className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+            <div className="p-3 bg-blue-900/30 rounded-xl">
+                <FileText className="w-6 h-6 text-blue-400" />
             </div>
             <div>
-                <p className="font-medium text-gray-900 dark:text-gray-100">
-                    {name}
-                </p>
-                <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                <p className="font-medium text-white">{name}</p>
+                <div className="flex items-center gap-2 text-sm text-gray-400">
                     <span>{type}</span>
                     <span>•</span>
                     <span>{size}</span>
@@ -1182,13 +1216,13 @@ const DocumentCard = ({ name, date, type, size }) => (
             </div>
         </div>
         <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" className="hover:bg-gray-700">
                 <Download className="w-4 h-4" />
             </Button>
             <Button
                 variant="ghost"
                 size="icon"
-                className="text-red-500 hover:text-red-600"
+                className="text-red-400 hover:text-red-500 hover:bg-gray-700"
             >
                 <Trash2 className="w-4 h-4" />
             </Button>
@@ -1198,23 +1232,21 @@ const DocumentCard = ({ name, date, type, size }) => (
 
 // Session Item
 const SessionItem = ({ device, location, lastActive, isCurrent }) => (
-    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
+    <div className="flex items-center justify-between p-4 bg-gray-800/50 rounded-xl">
         <div className="flex items-center gap-4">
-            <div className="p-3 bg-gray-200 dark:bg-gray-700 rounded-xl">
-                <Globe className="w-6 h-6 text-gray-600 dark:text-gray-400" />
+            <div className="p-3 bg-gray-700 rounded-xl">
+                <Globe className="w-6 h-6 text-gray-400" />
             </div>
             <div>
                 <div className="flex items-center gap-2">
-                    <p className="font-medium text-gray-900 dark:text-gray-100">
-                        {device}
-                    </p>
+                    <p className="font-medium text-white">{device}</p>
                     {isCurrent && (
-                        <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 text-xs font-medium rounded-full">
+                        <span className="px-2 py-0.5 bg-green-900/30 text-green-400 text-xs font-medium rounded-full">
                             Current
                         </span>
                     )}
                 </div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
+                <p className="text-sm text-gray-400">
                     {location} • {lastActive}
                 </p>
             </div>
@@ -1223,7 +1255,7 @@ const SessionItem = ({ device, location, lastActive, isCurrent }) => (
             <Button
                 variant="ghost"
                 size="sm"
-                className="text-red-500 hover:text-red-600"
+                className="text-red-400 hover:text-red-500 hover:bg-gray-700"
             >
                 Revoke
             </Button>
@@ -1239,14 +1271,10 @@ const NotificationToggle = ({
     checked,
     onChange,
 }) => (
-    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
+    <div className="flex items-center justify-between p-4 bg-gray-800/50 rounded-xl">
         <div>
-            <p className="font-medium text-gray-900 dark:text-gray-100">
-                {label}
-            </p>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-                {description}
-            </p>
+            <p className="font-medium text-white">{label}</p>
+            <p className="text-sm text-gray-400">{description}</p>
         </div>
         <label className="relative inline-flex items-center cursor-pointer">
             <input
@@ -1256,7 +1284,7 @@ const NotificationToggle = ({
                 onChange={onChange}
                 className="sr-only peer"
             />
-            <div className="w-11 h-6 bg-gray-300 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-cyan-300 dark:peer-focus:ring-cyan-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-600"></div>
+            <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-cyan-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-600"></div>
         </label>
     </div>
 );

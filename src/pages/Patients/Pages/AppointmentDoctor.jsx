@@ -1,6 +1,7 @@
 /* eslint-disable no-unused-vars */
 import React, { use, useEffect, useMemo, useState } from "react";
 import { PatientLayout } from "../components/PatientLayout";
+import { Loader2 } from "lucide-react";
 import {
     User,
     Phone,
@@ -50,6 +51,8 @@ const AppointmentDoctor = () => {
     const [location, setLocation] = useState("");
     const [selectDoctor, setSelectDoctor] = useState("");
     const [selectedDoctorId, setSelectedDoctorId] = useState("");
+    const [loadingDoctors, setLoadingDoctors] = useState(true);
+    const [booking, setBooking] = useState(false);
 
     // Set dark mode by default
     useEffect(() => {
@@ -70,19 +73,24 @@ const AppointmentDoctor = () => {
     }, [user, profile, date, time]);
 
     useEffect(() => {
-        axios
-            .get(`${gateway}/api/doctors`, {
-                headers: {
-                    Authorization: `Bearer ${auth.token}`,
-                },
-            })
-            .then((res) => {
+        const fetchDoctors = async () => {
+            try {
+                setLoadingDoctors(true);
+                const res = await axios.get(`${gateway}/api/doctors`, {
+                    headers: {
+                        Authorization: `Bearer ${auth.token}`,
+                    },
+                });
                 console.log("Doc : ", res.data);
                 setDoctors(res.data);
-            })
-            .catch((err) => {
+            } catch (err) {
                 console.error("Error fetching doctors:", err);
-            });
+            } finally {
+                setLoadingDoctors(false);
+            }
+        };
+
+        fetchDoctors();
     }, [gateway, auth.token]);
 
     const filteredDoctors = useMemo(() => {
@@ -125,17 +133,24 @@ const AppointmentDoctor = () => {
 
         console.log("Data for Appointment : ", dataForAppointment);
 
-        const res = axios.post(
-            `${gateway}/api/patients/medical-records/book`,
-            dataForAppointment,
-            {
-                headers: {
-                    Authorization: `Bearer ${auth.token}`,
+        try {
+            setBooking(true);
+            await axios.post(
+                `${gateway}/api/patients/medical-records/book`,
+                dataForAppointment,
+                {
+                    headers: {
+                        Authorization: `Bearer ${auth.token}`,
+                    },
                 },
-            },
-        );
-
-        toast.success("Booked Appointment !!! ");
+            );
+            toast.success("Booked Appointment !!!");
+        } catch (error) {
+            toast.error("Failed to book appointment");
+            console.error(error);
+        } finally {
+            setBooking(false);
+        }
     };
 
     return (
@@ -277,27 +292,40 @@ const AppointmentDoctor = () => {
                                 </div>
                             </div>
 
-                            {/* Doctor Selection */}
+                            {/* Doctor Selection - WITH LOADING */}
                             <div>
                                 <label className="block text-sm font-medium mb-2 text-slate-300">
                                     Select Doctor
                                 </label>
-                                <Select onValueChange={setSelectDoctor}>
-                                    <SelectTrigger className="w-full bg-slate-900/50 border-slate-600 text-white">
-                                        <SelectValue placeholder="Select Doctor" />
-                                    </SelectTrigger>
-                                    <SelectContent className="bg-slate-800 border-slate-700">
-                                        {filteredDoctors.map((doc) => (
-                                            <SelectItem
-                                                key={doc.userId}
-                                                value={doc.userId}
-                                                className="text-white hover:bg-slate-700"
-                                            >
-                                                {doc.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                {loadingDoctors ? (
+                                    <div className="w-full bg-slate-900/50 border border-slate-600 rounded-xl p-4 flex items-center justify-center gap-2 text-slate-400">
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        <span>Loading doctors...</span>
+                                    </div>
+                                ) : (
+                                    <Select onValueChange={setSelectDoctor}>
+                                        <SelectTrigger className="w-full bg-slate-900/50 border-slate-600 text-white">
+                                            <SelectValue placeholder="Select Doctor" />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-slate-800 border-slate-700">
+                                            {filteredDoctors.length === 0 ? (
+                                                <div className="p-4 text-center text-slate-400">
+                                                    No doctors available
+                                                </div>
+                                            ) : (
+                                                filteredDoctors.map((doc) => (
+                                                    <SelectItem
+                                                        key={doc.userId}
+                                                        value={doc.userId}
+                                                        className="text-white hover:bg-slate-700"
+                                                    >
+                                                        {doc.name}
+                                                    </SelectItem>
+                                                ))
+                                            )}
+                                        </SelectContent>
+                                    </Select>
+                                )}
                             </div>
 
                             {/* Date & Time */}
@@ -373,13 +401,21 @@ const AppointmentDoctor = () => {
                         </div>
                     </div>
 
-                    {/* ================= ACTION ================= */}
+                    {/* ================= ACTION - WITH LOADING ================= */}
                     <div className="flex justify-end">
                         <Button
-                            className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white px-8 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
+                            className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white px-8 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                             onClick={handleBookAppointment}
+                            disabled={booking || loadingDoctors}
                         >
-                            Book Appointment
+                            {booking ? (
+                                <>
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                    Booking...
+                                </>
+                            ) : (
+                                "Book Appointment"
+                            )}
                         </Button>
                     </div>
                 </div>
@@ -397,20 +433,6 @@ const ReadOnlyField = ({ label, value }) => (
         <div className="px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white">
             {value}
         </div>
-    </div>
-);
-
-const SelectField = ({ label, options }) => (
-    <div>
-        <label className="block text-sm font-medium mb-2 text-slate-300">
-            {label}
-        </label>
-        <select className="w-full px-4 py-3 rounded-xl border border-slate-600 bg-slate-900/50 text-white focus:ring-2 focus:ring-cyan-500 outline-none">
-            <option>Select {label}</option>
-            {options.map((opt, idx) => (
-                <option key={idx}>{opt}</option>
-            ))}
-        </select>
     </div>
 );
 
