@@ -166,7 +166,7 @@ export default function PatientMedicalRecordDetail() {
                 therapistId,
             );
             await api.post(
-                `${gateway}/api/therapists/therapy-plans`,
+                `${gateway}/api/therapists/therapy-plans/post`,
                 {
                     medicalRecordId: id,
                     therapistId: therapistId,
