@@ -29,7 +29,25 @@ export default function LoginPage() {
 
     useEffect(() => {
         const handleMessage = (event) => {
+            console.log("RAW MESSAGE EVENT:", event);
+
+            if (!event.data) {
+                toast.error("OAuth failed: empty response");
+                return;
+            }
+
+            if (!event.data.approvalStatus) {
+                toast.error("OAuth failed: invalid payload");
+                console.error("Invalid OAuth payload:", event.data);
+                return;
+            }
+
             const data = event.data;
+            if (data.error) {
+                toast.error(data.message || "OAuth login failed");
+                return;
+            }
+
             if (!data) return;
 
             console.log("OAuth data:", data);
@@ -55,7 +73,7 @@ export default function LoginPage() {
                         userResponse: data.userResponse,
                     }),
                 );
-
+                console.log(data);
                 if (data.role === "DOCTOR") navigate("/doctor/dashboard");
                 else if (data.role === "PATIENT")
                     navigate("/patient/dashboard");
