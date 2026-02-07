@@ -8,31 +8,20 @@ export function warmupAllServices() {
     if (warmupStarted) return;
     warmupStarted = true;
 
-    console.log("[WARMUP] Starting safe service warmup…");
+    console.log("[WARMUP] AWS Lambda Services");
 
     const services = [
-        // Phase 1: Wake gateway first (single, light call)
-        {
-            service: "gateway",
-            url: `${import.meta.env.VITE_GATEWAY_BASE_URL}/api/health`,
-        },
-
-        // Phase 2: Wake services directly (bypass gateway)
-        {
-            service: "user",
-            url: `${import.meta.env.VITE_USER_SERVICE_URL}/api/user/health`,
-        },
         {
             service: "patient",
-            url: `${import.meta.env.VITE_PATIENT_SERVICE_URL}/api/patients/health`,
+            url: `https://6nwyuohdlj56joe7woofinwrha0kcfkn.lambda-url.ap-south-1.on.aws/api/patients/health`,
         },
         {
             service: "doctor",
-            url: `${import.meta.env.VITE_DOCTOR_SERVICE_URL}/api/doctors/health`,
+            url: `https://drpmkp5mkknuow5k3dvniexpwu0xnhyq.lambda-url.ap-south-1.on.aws/api/doctors/health`,
         },
         {
             service: "therapist",
-            url: `${import.meta.env.VITE_THERAPIST_SERVICE_URL}/api/therapists/health`,
+            url: `https://orxo3htpod3s7itaugd7pzpv3y0hnwrj.lambda-url.ap-south-1.on.aws/api/therapists/health`,
         },
     ];
 

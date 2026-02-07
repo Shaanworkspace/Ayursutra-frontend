@@ -18,14 +18,12 @@ export async function warmupSingleService({
 
     dispatch(setServiceStatus({ service, status: "waking" }));
 
-    toast.info(
-        `${service.toUpperCase()} service is starting (Render free tier, may take ~2–3 min)`,
-        { duration: 6000 },
-    );
+    toast.info(`${service.toUpperCase()} service is starting`, {
+        duration: 6000,
+    });
 
     const startTime = Date.now();
 
-    // 🔒 ONE request per attempt, slow & safe
     while (Date.now() - startTime < maxWaitMs) {
         try {
             await axios.get(url, {
@@ -33,7 +31,7 @@ export async function warmupSingleService({
             });
 
             dispatch(setServiceStatus({ service, status: "up" }));
-            toast.success(`${service.toUpperCase()} service is ready`);
+            toast.success(`${service.toUpperCase()} Service UP`);
             return;
         } catch {
             // ⏳ Wait FULL 3 minutes before retry (no spamming)
