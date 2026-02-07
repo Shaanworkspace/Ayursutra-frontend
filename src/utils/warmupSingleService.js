@@ -8,7 +8,7 @@ export async function warmupSingleService({
     url,
     dispatch,
     getState,
-    maxWaitMs = 180000, // 3 minutes
+    maxWaitMs = 180000,
 }) {
     const currentStatus = getState().serviceStatus[service];
 
@@ -17,10 +17,6 @@ export async function warmupSingleService({
     }
 
     dispatch(setServiceStatus({ service, status: "waking" }));
-
-    toast.info(`${service.toUpperCase()} service is starting`, {
-        duration: 6000,
-    });
 
     const startTime = Date.now();
 
@@ -34,15 +30,10 @@ export async function warmupSingleService({
             toast.success(`${service.toUpperCase()} Service UP`);
             return;
         } catch {
-            // ⏳ Wait FULL 3 minutes before retry (no spamming)
             await new Promise((r) => setTimeout(r, 180000));
         }
     }
 
     dispatch(setServiceStatus({ service, status: "down" }));
-
-    toast.error(
-        `${service.toUpperCase()} service is still starting. Please refresh in a moment.`,
-        { duration: 8000 },
-    );
+    console.log("Please restart");
 }
