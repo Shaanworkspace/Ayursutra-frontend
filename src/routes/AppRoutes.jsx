@@ -12,11 +12,9 @@ import DoctorProfile from "@/pages/Doctors/DoctorProfile";
 import DoctorDashboard from "@/pages/Doctors/DoctorDashboard";
 import TherapistDashboard from "@/pages/Therapists/TherapistDashboard";
 import TherapistProfile from "@/pages/Therapists/TherapistProfile";
-import AppointmentDoctor from "@/pages/Patients/Pages/AppointmentDoctor";
 import OAuthCallback from "@/pages/Auth/OAuthCallback";
 import UnderReviewPage from "@/pages/Auth/UnderReviewPage";
 import RejectedPage from "@/pages/Auth/RejectedPage";
-import DoctorAppointmentDetail from "@/pages/Doctors/components/DoctorAppointmentDetail";
 import TherapistSessionDetail from "@/pages/Therapists/Page/TherapistSessionDetail";
 import TherapistSchedule from "@/pages/Therapists/SlotsComponents/TherapistSchedule";
 import PatientMedicalRecordDetail from "@/pages/Patients/Pages/PatientMedicalRecordDetail";
@@ -29,6 +27,8 @@ import DoctorPatientDetail from "@/pages/Doctors/Pages/DoctorPatientDetail";
 import TherapistSessions from "@/pages/Therapists/Page/TherapistSessions";
 import TherapistSessionNotes from "@/pages/Therapists/Page/TherapistSessionNotes";
 import TherapistClientProfile from "@/pages/Therapists/Page/TherapistClientProfile";
+import DoctorAppointmentDetail from "@/pages/Doctors/components/DoctorAppointmentDetail";
+import BookAppointment from "@/pages/Patients/Pages/BookAppointment";
 
 export default function AppRoutes() {
     return (
@@ -118,7 +118,7 @@ export default function AppRoutes() {
                     path="/patient/appointment-doc"
                     element={
                         <ProtectedRoute role="PATIENT">
-                            <AppointmentDoctor />
+                            <BookAppointment />
                         </ProtectedRoute>
                     }
                 />

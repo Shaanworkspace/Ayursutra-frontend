@@ -16,6 +16,7 @@ import {
 import { DoctorLayout } from "./components/DoctorLayout";
 import axios from "axios";
 import { setProfile } from "@/Store/Slices/profileSlice";
+import DoctorUpdatePage from "./Pages/DoctorUpdatePage";
 
 export default function DoctorDashboard() {
     const dispatch = useDispatch();
@@ -29,19 +30,20 @@ export default function DoctorDashboard() {
     const storedUser = localStorage.getItem("userResponse");
     const [showAll, setShowAll] = useState(false);
     const [loadingProfile, setLoadingProfile] = useState(false);
-
+    const [medicalRecords, setMedicalRecords] = useState([]);
+    const [loadingRecords, setLoadingRecords] = useState(false);
     const profile = storedProfile
         ? JSON.parse(storedProfile).data
         : reduxProfile;
+
+    const needsProfileUpdate =
+        !profile?.specialization || !profile?.availability;
+
     const user = storedUser ? JSON.parse(storedUser) : reduxUser;
     const roleU = localStorage.getItem("role") || reduxRole;
-    const appointments = Array.isArray(profile?.medicalRecords)
-        ? profile.medicalRecords
-        : [];
 
-    console.log(appointments);
-    const sortedAppointments = [...appointments].sort(
-        (a, b) => new Date(b.createdDate) - new Date(a.createdDate),
+    const sortedAppointments = [...medicalRecords].sort(
+        (a, b) => new Date(b.createdDateTime) - new Date(a.createdDateTime),
     );
     const visibleAppointments = showAll
         ? sortedAppointments
@@ -63,11 +65,12 @@ export default function DoctorDashboard() {
     const doctorFName = user?.firstName || "Doctor";
     const today = new Date();
 
-    const totalAppointments = appointments?.length;
+    const totalAppointments = medicalRecords?.length;
 
-    const uniquePatients = new Set(appointments?.map((r) => r.patientId)).size;
+    const uniquePatients = new Set(medicalRecords?.map((r) => r.patientId))
+        .size;
 
-    const activeTreatments = appointments?.filter(
+    const activeTreatments = medicalRecords?.filter(
         (r) => r.needTherapy === true,
     ).length;
     const earnings = totalAppointments * 1500;
@@ -118,6 +121,38 @@ export default function DoctorDashboard() {
         gateway,
         dispatch,
     ]);
+
+    useEffect(() => {
+        if (!auth.token || !user?.id) return;
+
+        const fetchDoctorMedicalRecords = async () => {
+            try {
+                setLoadingRecords(true);
+
+                const res = await axios.get(
+                    `${gateway}/api/patients/medical-records/doc/${user.id}`,
+                    {
+                        headers: {
+                            Authorization: `Bearer ${auth.token}`,
+                        },
+                    },
+                );
+                console.log("records : ", res.data);
+                setMedicalRecords(res.data || []);
+            } catch (e) {
+                console.error("Failed to load doctor medical records", e);
+                setMedicalRecords([]);
+            } finally {
+                setLoadingRecords(false);
+            }
+        };
+
+        fetchDoctorMedicalRecords();
+    }, [auth.token, user?.userId, gateway]);
+
+    if (!loadingProfile && profile && needsProfileUpdate) {
+        return <DoctorUpdatePage />;
+    }
 
     return (
         <DoctorLayout>
@@ -189,7 +224,7 @@ export default function DoctorDashboard() {
                             </div>
 
                             <div className="divide-y divide-gray-800">
-                                {loadingProfile ? (
+                                {loadingRecords ? (
                                     <div className="p-8">
                                         <AppointmentSkeleton />
                                         <AppointmentSkeleton />
@@ -211,7 +246,7 @@ export default function DoctorDashboard() {
                                                 record={record}
                                                 time={formatDate(
                                                     record.visitDate ||
-                                                        record.createdDate,
+                                                        record.createdDateTime,
                                                 )}
                                                 patient={
                                                     record.patientName ??

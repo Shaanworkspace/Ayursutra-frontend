@@ -50,7 +50,7 @@ export default function TherapistClientProfile() {
             <TherapistNavbar />
 
             <div className="min-h-screen bg-gray-950 text-gray-100 p-6 pt-28">
-                <div className="max-w-6xl mx-auto space-y-6">
+                <div className="max-w-7xl mx-auto space-y-6">
                     {/* Header */}
                     <header>
                         <h1 className="text-3xl font-bold">Client Profile</h1>

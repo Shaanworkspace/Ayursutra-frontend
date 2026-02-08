@@ -45,7 +45,7 @@ export default function SelectRole() {
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-black p-6">
-            <div className="w-full max-w-6xl">
+            <div className="w-full max-w-7xl">
                 {/* Header */}
                 <div className="text-center mb-12">
                     <h1 className="text-4xl font-bold text-white mb-3">

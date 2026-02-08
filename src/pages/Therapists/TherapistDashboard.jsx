@@ -16,9 +16,11 @@ import {
     Eye,
     Brain,
     Loader2,
+    Clock1,
 } from "lucide-react";
 import TherapistNavbar from "./components/TherapistNavbar";
 import { Button } from "@/components/ui/button";
+
 import {
     AlertDialog,
     AlertDialogAction,
@@ -34,6 +36,7 @@ import PatientFooter from "../Home/components/Footer";
 import axios from "axios";
 import { setProfile } from "@/Store/Slices/profileSlice";
 import LoadingScreen from "@/components/common/LoadingScreen";
+import { Badge } from "@/components/ui/badge";
 
 export default function TherapistDashboard() {
     const dispatch = useDispatch();
@@ -56,8 +59,10 @@ export default function TherapistDashboard() {
     const [medicalRecords, setMedicalRecords] = useState([]);
     const [loadingRecords, setLoadingRecords] = useState(true);
     const [loadingProfile, setLoadingProfile] = useState(false);
-    const sessions = medicalRecords;
-
+    const [bookedSessions, setBookedSessions] = useState([]);
+    const upcomingSessions = bookedSessions.filter(
+        (session) => session.status !== "COMPLETED",
+    );
     const gateway = import.meta.env.VITE_API_GATEWAY_BASE_URL;
 
     useEffect(() => {
@@ -74,6 +79,7 @@ export default function TherapistDashboard() {
                         },
                     },
                 );
+                console.log("Medical Records : ", res.data);
                 setMedicalRecords(res.data || []);
             } catch (err) {
                 console.error("Failed to fetch medical records", err);
@@ -86,8 +92,27 @@ export default function TherapistDashboard() {
         fetchMedicalRecords();
     }, [profile?.userId, auth.token, gateway]);
 
-    const sortedSessions = [...sessions].sort(
-        (a, b) => new Date(b.createdDate) - new Date(a.createdDate),
+    useEffect(() => {
+        if (!auth.token || !profile?.userId) return;
+
+        const fetchBookedSessions = async () => {
+            try {
+                const res = await axios.get(
+                    `${gateway}/api/therapists/therapy-sessions/therapist/${profile.userId}`,
+                    { headers: { Authorization: `Bearer ${auth.token}` } },
+                );
+                console.log("Booked Sessions: ", res.data);
+                setBookedSessions(res.data || []);
+            } catch (err) {
+                console.error("Failed to fetch booked sessions", err);
+            }
+        };
+
+        fetchBookedSessions();
+    }, [profile?.userId, auth.token]);
+
+    const sortedSessions = [...medicalRecords].sort(
+        (a, b) => new Date(b.updatedDateTime) - new Date(a.updatedDateTime),
     );
 
     const formatDate = (date) =>
@@ -103,8 +128,10 @@ export default function TherapistDashboard() {
         profile?.therapistName || user?.firstName || "Therapist";
 
     const today = new Date();
-    const totalSessions = sessions.length;
-    const todaysSessions = sessions.filter((r) => {
+    const totalSessions = medicalRecords.length;
+    const monthlyEarnings = totalSessions * 1200;
+
+    const todaysSessions = medicalRecords.filter((r) => {
         if (!r.visitDate) return false;
         const d = new Date(r.visitDate);
         return (
@@ -115,20 +142,22 @@ export default function TherapistDashboard() {
     }).length;
 
     const uniquePatients = new Set(
-        sessions.map((r) => r.patientId).filter(Boolean),
+        medicalRecords.map((r) => r.patientId).filter(Boolean),
     ).size;
-    const activeTherapyCases = sessions.filter(
+    const activeTherapyCases = medicalRecords.filter(
         (r) => r.needTherapy === true,
     ).length;
-    const monthlyEarnings = totalSessions * 1200;
     const therapistRating = 4.9;
 
-    const pendingSessions = sessions.filter(
-        (r) => r.therapistPlans?.therapistDecisionStatus === "PENDING",
+    const pendingSessions = medicalRecords.filter(
+        (r) =>
+            r.sessionMedicalRecordStatus === "WAITING_FOR_THERAPIST_APPROVAL",
     );
 
-    const approvedSessions = sessions.filter(
-        (r) => r.therapistPlans?.therapistDecisionStatus === "APPROVED",
+    const visibleStatuses = ["THERAPIST_APPROVED", "THERAPY_IN_PROGRESS"];
+
+    const approvedSessions = medicalRecords.filter((r) =>
+        visibleStatuses.includes(r.sessionMedicalRecordStatus),
     );
 
     const visibleSessions = showAll
@@ -137,14 +166,11 @@ export default function TherapistDashboard() {
 
     useEffect(() => {
         if (!auth.token || !user) return;
-
         const profileUserId = profile?.email;
         const authUserId = user?.email;
-
         const shouldFetch =
             profileUserId !== authUserId ||
             reduxProfileRole?.toLowerCase() !== roleU?.toLowerCase();
-
         if (!shouldFetch) return;
 
         const fetchTherapistProfile = async () => {
@@ -182,21 +208,34 @@ export default function TherapistDashboard() {
         dispatch,
     ]);
 
-    const approve = async (therapyPlanId) => {
-        await axios.put(
-            `${gateway}/api/therapists/therapy-plans/${therapyPlanId}/decision`,
-            null,
-            {
-                params: { status: "APPROVED" },
-                headers: { Authorization: `Bearer ${auth.token}` },
-            },
-        );
-        window.location.reload();
+    const approve = async (record) => {
+        try {
+            const therapyPlanId = record.therapistPlans.therapyPlanId;
+
+            if (!therapyPlanId) {
+                console.error("Therapy Plan ID not found for this record");
+                return;
+            }
+
+            await axios.put(
+                `${gateway}/api/therapists/therapy-plans/${therapyPlanId}/start`,
+                null,
+                {
+                    headers: {
+                        Authorization: `Bearer ${auth.token}`,
+                    },
+                },
+            );
+
+            window.location.reload();
+        } catch (e) {
+            console.error(e);
+        }
     };
 
-    const reject = async (therapyPlanId) => {
+    const reject = async (medicalRecordId) => {
         await axios.put(
-            `${gateway}/api/therapists/therapy-plans/${therapyPlanId}/decision`,
+            `${gateway}/api/therapists/therapy-plans/${medicalRecordId}/decision`,
             null,
             {
                 params: { status: "REJECTED" },
@@ -327,12 +366,7 @@ export default function TherapistDashboard() {
                                     <div className="flex gap-3">
                                         <Button
                                             className="bg-green-600 hover:bg-green-700"
-                                            onClick={() =>
-                                                approve(
-                                                    record.therapistPlans
-                                                        .therapyPlanId,
-                                                )
-                                            }
+                                            onClick={() => approve(record)}
                                         >
                                             Approve
                                         </Button>
@@ -367,9 +401,7 @@ export default function TherapistDashboard() {
                                                         className="bg-red-600 hover:bg-red-700 text-white"
                                                         onClick={() =>
                                                             reject(
-                                                                record
-                                                                    .therapistPlans
-                                                                    .therapyPlanId,
+                                                                record.medicalRecordId,
                                                             )
                                                         }
                                                     >
@@ -537,6 +569,85 @@ export default function TherapistDashboard() {
                             </div>
                         </div>
                     </div>
+                    {/* ================= SESSIONS TO TAKE (Booked Slots) ================= */}
+                    <section className="bg-gradient-to-br from-indigo-900/20 to-gray-900 border border-indigo-500/30 rounded-2xl shadow-xl overflow-hidden">
+                        <div className="p-6 bg-indigo-500/10 border-b border-indigo-500/20 flex justify-between items-center">
+                            <div>
+                                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                                    <Clock className="text-indigo-400" />
+                                    Sessions to Take
+                                </h2>
+                                <p className="text-sm text-indigo-300/70">
+                                    Upcoming booked slots
+                                </p>
+                            </div>
+                            <Badge className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded-full border-none text-xs font-bold shadow-lg shadow-indigo-500/20">
+                                {upcomingSessions?.length || 0} Scheduled
+                            </Badge>
+                        </div>
+
+                        <div className="divide-y divide-gray-800">
+                            {upcomingSessions.length === 0 ? (
+                                <div className="p-10 text-center text-gray-500">
+                                    <Calendar className="..." />
+                                    <p>No upcoming sessions found.</p>
+                                </div>
+                            ) : (
+                                upcomingSessions.map((session) => (
+                                    <div
+                                        key={session.sessionId}
+                                        className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-5 hover:bg-indigo-500/5 transition-colors gap-4"
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div className="flex flex-col items-center justify-center h-14 w-14 bg-gray-800 rounded-xl border border-gray-700">
+                                                <span className="text-[10px] text-indigo-400 font-bold uppercase">
+                                                    {new Date(
+                                                        session.sessionDate,
+                                                    ).toLocaleString(
+                                                        "default",
+                                                        { month: "short" },
+                                                    )}
+                                                </span>
+                                                <span className="text-xl font-bold text-white">
+                                                    {new Date(
+                                                        session.sessionDate,
+                                                    ).getDate()}
+                                                </span>
+                                            </div>
+                                            <div>
+                                                {/* Yahan aap Patient Name dikhane ke liye medicalRecords se filter kar sakte hain */}
+                                                <p className="font-semibold text-white text-lg">
+                                                    Therapy Session #
+                                                    {session.sessionId.substring(
+                                                        0,
+                                                        8,
+                                                    )}
+                                                </p>
+                                                <p className="text-sm text-gray-400 flex items-center gap-2">
+                                                    <Clock1 className="w-4 h-4 text-indigo-400" />
+                                                    {session.startTime} -{" "}
+                                                    {session.endTime}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-3 w-full sm:w-auto">
+                                            <Button className="flex-1 sm:flex-none bg-indigo-600 hover:bg-indigo-700 text-white">
+                                                <Video className="w-4 h-4 mr-2" />
+                                                Join Call
+                                            </Button>
+                                            <Link
+                                                to={`/therapist/sessions/${session.medicalRecordId}`}
+                                                className="p-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-gray-400 hover:text-white transition-all"
+                                            >
+                                                <Eye className="w-5 h-5" />
+                                            </Link>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </section>
                 </div>
             </div>
             <PatientFooter />

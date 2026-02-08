@@ -24,7 +24,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
-// Custom Calendar Component
 const CustomCalendar = ({ onDateClick, selectedDate }) => {
     const [currentDate, setCurrentDate] = useState(new Date());
 
@@ -313,7 +312,7 @@ export default function TherapistSchedule() {
                         },
                     },
                 );
-                console.log("slots : ", res.data);
+                console.log("Slots Fetched : ", res.data);
                 setAllSlots(res.data || []);
             } catch (err) {
                 console.error("Error fetching all slots", err);
@@ -322,6 +321,7 @@ export default function TherapistSchedule() {
 
         fetchAllSlots();
     }, []);
+
     const deleteSlot = async (slotId) => {
         try {
             await axios.delete(`${gateway}/api/therapists/slots/${slotId}`, {
@@ -403,6 +403,7 @@ export default function TherapistSchedule() {
             console.error("Error adding slot", error);
         }
     };
+
     useEffect(() => {
         if (!confirmDeleteSlotId) return;
 

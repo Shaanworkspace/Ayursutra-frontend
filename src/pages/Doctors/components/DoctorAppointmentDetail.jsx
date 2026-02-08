@@ -44,12 +44,12 @@ export default function DoctorAppointmentDetail() {
     const { id } = useParams();
     const location = useLocation();
     const auth = useSelector((state) => state.auth);
+    const reduxUser = useSelector((state) => state.auth.userResponse);
+    const reduxRole = useSelector((state) => state.auth.role);
 
     const passedRecord = location.state?.record || null;
 
-    const reduxUser = useSelector((state) => state.auth.userResponse);
     const reduxProfile = useSelector((state) => state.profile.data);
-    const reduxRole = useSelector((state) => state.auth.role);
     const reduxProfileRole = useSelector((state) => state.profile.role);
     const storedProfile = localStorage.getItem("profile");
     const storedUser = localStorage.getItem("userResponse");
@@ -59,12 +59,17 @@ export default function DoctorAppointmentDetail() {
     const [editedData, setEditedData] = useState({});
     const gateway = import.meta.env.VITE_API_GATEWAY_BASE_URL;
     const [therapist, setTherapist] = useState([]);
-    const profile = storedProfile
-        ? JSON.parse(storedProfile).data
-        : reduxProfile;
-    const user = storedUser ? JSON.parse(storedUser) : reduxUser;
+    const [profile, setProfile] = useState(() => {
+        const stored = localStorage.getItem("profile");
+        return stored ? JSON.parse(stored).data : reduxProfile;
+    });
+
+    const [user, setUser] = useState(() => {
+        const stored = localStorage.getItem("userResponse");
+        return stored ? JSON.parse(stored) : reduxUser;
+    });
+
     const roleU = localStorage.getItem("role") || reduxRole;
-    console.log("token :", auth.token);
     console.log(reduxProfileRole, " : ", profile);
     console.log(roleU, " :  ", user);
 
@@ -86,15 +91,37 @@ export default function DoctorAppointmentDetail() {
             }
         };
         fetchRecord();
-    }, [id, record, auth.token]);
+    }, [id]);
+    const MEDICAL_STATUSES = [
+        "CREATED",
+        "UNDER_EVALUATION",
+        "DIAGNOSED",
+        "IN_TREATMENT",
+        "HAVING_TREATMENT",
+        "TESTS_ORDERED",
+        "AWAITING_RESULTS",
+        "FOLLOW_UP_REQUIRED",
+        "RECOVERING",
+        "COMPLETED",
+        "ON_HOLD",
+        "REFERRED",
+        "ESCALATED",
+        "CRITICAL",
+        "CANCELLED",
+        "ABANDONED",
+        "ARCHIVED",
+    ];
 
     const handleEdit = () => {
-        setEditedData({
+        const editData = {
             symptoms: record.symptoms || "",
             prescribedTreatment: record.prescribedTreatment || "",
             medications: record.medications || "",
             needTherapy: record.needTherapy || false,
-        });
+            medicalRecordStatus: record.status || "CREATED",
+        };
+        console.log(editData);
+        setEditedData(editData);
         setIsEditing(true);
     };
 
@@ -117,7 +144,10 @@ export default function DoctorAppointmentDetail() {
                 },
             );
 
-            setRecord({ ...record, ...editedData });
+            setRecord((prev) => ({
+                ...prev,
+                ...editedData,
+            }));
             setIsEditing(false);
             setEditedData({});
         } catch (err) {
@@ -440,13 +470,83 @@ export default function DoctorAppointmentDetail() {
                                         </p>
                                         <p className="text-lg font-bold text-white">
                                             {record.therapistName ||
-                                                "Not Assigned"}
+                                                "Not Chosen By Patient"}
                                         </p>
                                     </div>
                                 </div>
                             )}
                         </CardContent>
                     </Card>
+                    {!isEditing && (
+                        <div className="p-4 rounded-lg bg-gray-950/50 border border-gray-700">
+                            <p className="text-sm text-gray-400 uppercase tracking-wide">
+                                Medical Status
+                            </p>
+                            <Badge className="mt-2 bg-blue-600 text-white px-4 py-1 text-base">
+                                {record?.status
+                                    ? record.status.replaceAll("_", " ")
+                                    : "Not Set"}
+                            </Badge>
+                        </div>
+                    )}
+
+                    {/* Medical Status */}
+                    {isEditing && !editedData.needTherapy && (
+                        <Card className="bg-gradient-to-br from-gray-800 to-gray-900 border-gray-700 shadow-xl">
+                            <CardHeader>
+                                <CardTitle className="text-xl text-white">
+                                    Medical Record Status
+                                </CardTitle>
+                                <CardDescription className="text-gray-400">
+                                    Select the current stage of the medical case
+                                </CardDescription>
+                            </CardHeader>
+
+                            <CardContent>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {MEDICAL_STATUSES.map((status) => {
+                                        const isSelected =
+                                            editedData.medicalRecordStatus ===
+                                            status;
+
+                                        return (
+                                            <div
+                                                key={status}
+                                                onClick={() =>
+                                                    handleChange(
+                                                        "medicalRecordStatus",
+                                                        status,
+                                                    )
+                                                }
+                                                className={`cursor-pointer rounded-xl border p-4 transition-all
+                                ${
+                                    isSelected
+                                        ? "border-emerald-500 bg-emerald-500/10 shadow-lg"
+                                        : "border-gray-700 bg-gray-950/50 hover:border-gray-500"
+                                }
+                            `}
+                                            >
+                                                <div className="flex items-center justify-between">
+                                                    <p className="text-white font-medium">
+                                                        {status.replaceAll(
+                                                            "_",
+                                                            " ",
+                                                        )}
+                                                    </p>
+
+                                                    {isSelected ? (
+                                                        <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                                                    ) : (
+                                                        <div className="w-5 h-5 rounded-full border border-gray-600" />
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
                 </div>
             </div>
         </DoctorLayout>

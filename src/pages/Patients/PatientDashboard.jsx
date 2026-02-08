@@ -43,8 +43,6 @@ export default function PatientDashboard() {
     const gateway = import.meta.env.VITE_API_GATEWAY_BASE_URL;
 
     const fname = user?.firstName || "";
-    const lname = user?.lastName || "";
-    const email = user?.email || "";
     const authUserId = user?.userId || user?.email;
     const [medicalRecords, setMedicalRecords] = useState([]);
     const [loadingRecords, setLoadingRecords] = useState(true);
@@ -121,26 +119,22 @@ export default function PatientDashboard() {
     }, [fetchMedicalRecords]);
 
     const PatientAppointmentRow = ({ record }) => {
-        const date = record.visitDate || record.createdDate;
+        const updatedAt = record.updatedDateTime;
 
-        const time = date
-            ? new Date(date).toLocaleDateString("en-IN", {
+        const time = updatedAt
+            ? new Date(updatedAt).toLocaleString("en-IN", {
                   day: "2-digit",
                   month: "short",
-                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
               })
-            : "Not Scheduled";
+            : "Not updated";
 
         const isTherapy = record.needTherapy === true;
 
         const title = isTherapy ? "Therapy Session" : "Doctor Consultation";
 
-        const name =
-            record.therapistPlans?.length > 0
-                ? "Therapist Consultation"
-                : record.needTherapy
-                  ? "Doctor Checked"
-                  : "Waiting For Doctor Review";
+        const name = record?.sessionMedicalRecordStatus || "No Medical Status";
 
         const mode = "video";
 

@@ -1,6 +1,6 @@
 /* eslint-disable no-unused-vars */
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
     Menu,
     X,
@@ -22,11 +22,12 @@ const TherapistNavbar = () => {
 
     const [isOpen, setIsOpen] = useState(false);
     const [showProfileMenu, setShowProfileMenu] = useState(false);
-
+    const navigate = useNavigate();
     const handleLogout = () => {
         dispatch(logout());
         setIsOpen(false);
         setShowProfileMenu(false);
+        navigate("/login", { replace: true });
     };
 
     const userName =

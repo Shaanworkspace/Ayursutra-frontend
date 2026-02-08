@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars */
-import React, { useEffect, useState } from "react";
+import React, { Activity, useEffect, useState } from "react";
 import { useParams, useLocation, Link } from "react-router-dom";
 import {
     ArrowLeft,
@@ -17,6 +17,9 @@ import {
     X,
     Clock,
     Sparkles,
+    TrendingUp,
+    CheckCircle,
+    ListChecks,
 } from "lucide-react";
 import api from "@/lib/axios";
 import LoadingScreen from "@/components/common/LoadingScreen";
@@ -30,6 +33,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 import TherapistNavbar from "../components/TherapistNavbar";
 import PatientFooter from "@/pages/Home/components/Footer";
+import { toast } from "sonner";
 
 const THERAPY_TYPES = [
     "CBT",
@@ -52,16 +56,33 @@ export default function TherapistSessionDetail() {
     const reduxProfile = useSelector((state) => state.profile.data);
     const storedProfile = localStorage.getItem("profile");
     const [record, setRecord] = useState(location.state?.record || null);
+    const [sessions, setSessions] = useState([]);
 
     const profile = storedProfile
         ? JSON.parse(storedProfile).data
         : reduxProfile;
     const gateway = import.meta.env.VITE_API_GATEWAY_BASE_URL;
     const [editedData, setEditedData] = useState({
-        needTherapy: record?.needTherapy || false,
-        therapies: record?.therapies || [],
-        therapistNotes: record?.therapistNotes || "",
+        needTherapy: false,
+        therapies: [],
+        therapistNotes: "",
+        totalTherapySessions: 0,
     });
+
+    const fetchSessionHistory = async (planId) => {
+        try {
+            const res = await api.get(
+                `${gateway}/api/therapists/therapy-sessions/plan/${planId}`,
+                {
+                    headers: { Authorization: `Bearer ${auth.token}` },
+                },
+            );
+            setSessions(res.data);
+        } catch (e) {
+            console.error("Failed to fetch sessions", e);
+        }
+    };
+
     const fetchRecord = async () => {
         try {
             const res = await api.get(
@@ -70,15 +91,19 @@ export default function TherapistSessionDetail() {
                     headers: { Authorization: `Bearer ${auth.token}` },
                 },
             );
-
-            console.log("Fetched record from server:", res.data);
-
-            setRecord(res.data);
+            const data = res.data;
+            setRecord(data);
             setEditedData({
-                needTherapy: res.data.needTherapy || false,
-                therapies: res.data.therapies || [],
-                therapistNotes: res.data.therapistNotes || "",
+                needTherapy: data.needTherapy ?? false,
+                therapies: data.therapistPlans?.therapies || [],
+                therapistNotes: data.therapistPlans?.therapistNotes || "",
+                totalTherapySessions:
+                    data.therapistPlans?.totalTherapySessions || 0,
             });
+
+            if (res.data.therapistPlans?.therapyPlanId) {
+                fetchSessionHistory(res.data.therapistPlans.therapyPlanId);
+            }
         } catch (err) {
             console.error("Failed to fetch record", err);
         }
@@ -92,22 +117,26 @@ export default function TherapistSessionDetail() {
     const handleSave = async () => {
         setIsSaving(true);
         try {
-            console.log("sending a update to medical record as :", editedData);
-            const response = await api.put(
-                `${gateway}/api/patients/medical-records/${id}/therapist-update`,
-                editedData,
+            const diagnosisData = {
+                therapies: editedData.therapies,
+                therapistNotes: editedData.therapistNotes,
+                totalTherapySessions: editedData.totalTherapySessions,
+            };
+
+            console.log("Sending data to backend:", diagnosisData);
+
+            await api.put(
+                `${gateway}/api/therapists/therapy-plans/${record.medicalRecordId}/diagnose`,
+                diagnosisData,
                 { headers: { Authorization: `Bearer ${auth.token}` } },
             );
-            console.log("Response from server:", response);
-            console.log("Data returned by server:", response.data);
 
+            toast.success("Saved successfully");
             await fetchRecord();
             setIsEditing(false);
         } catch (error) {
-            console.error("Failed to save:", error);
-            if (error.response) {
-                console.error("Server error data:", error.response.data);
-            }
+            console.error("Axios Error Details:", error.response?.data); // Isse check karein exact backend error
+            toast.error("Save failed. Check console for details.");
         } finally {
             setIsSaving(false);
         }
@@ -115,11 +144,26 @@ export default function TherapistSessionDetail() {
 
     const handleCancel = () => {
         setEditedData({
-            needTherapy: record.needTherapy || false,
-            therapies: record.therapies || [],
-            therapistNotes: record.therapistNotes || "",
+            therapies: record.therapistPlans?.therapies || [],
+            therapistNotes: record.therapistPlans?.therapistNotes || "",
         });
         setIsEditing(false);
+    };
+
+    const markAsComplete = async (sessionId) => {
+        try {
+            await api.put(
+                `${gateway}/api/therapists/therapy-plans/${sessionId}/session/complete`,
+                null,
+                {
+                    headers: { Authorization: `Bearer ${auth.token}` },
+                },
+            );
+            toast.success("Session marked as completed");
+            fetchRecord();
+        } catch (e) {
+            toast.error("Failed to update status");
+        }
     };
 
     if (!record) {
@@ -139,6 +183,10 @@ export default function TherapistSessionDetail() {
                   year: "numeric",
               })
             : "Not Scheduled";
+
+    const completed = record.therapistPlans?.completedTherapySessions || 0;
+    const total = record.therapistPlans?.totalTherapySessions || 1;
+    const progressPercent = Math.min(100, (completed / total) * 100);
 
     return (
         <>
@@ -215,6 +263,58 @@ export default function TherapistSessionDetail() {
                         </div>
                     </div>
 
+                    {/* Progress Banner */}
+                    <Card className="bg-indigo-600/10 border-indigo-500/20 shadow-lg">
+                        <CardContent className="pt-6">
+                            <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+                                <div className="flex items-center gap-4">
+                                    <div className="p-3 bg-indigo-600 rounded-2xl shadow-lg shadow-indigo-500/20">
+                                        <TrendingUp className="text-white w-8 h-8" />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-2xl font-bold text-white">
+                                            Case Progress
+                                        </h2>
+                                        <p className="text-indigo-300">
+                                            {record.therapistPlans
+                                                ?.totalTherapySessions ||
+                                                0}{" "}
+                                            Total Sessions Planned
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex-1 max-w-md w-full px-4 text-center md:text-left">
+                                    <div className="h-3 bg-gray-800 rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full bg-indigo-500 transition-all duration-1000 ease-out"
+                                            style={{
+                                                width: `${(record.therapistPlans?.completedTherapySessions / record.therapistPlans?.totalTherapySessions) * 100}%`,
+                                            }}
+                                        />
+                                    </div>
+                                    <div className="flex justify-between mt-2 text-[10px] font-black tracking-widest text-indigo-400 uppercase">
+                                        <span>
+                                            {record.therapistPlans
+                                                ?.completedTherapySessions ||
+                                                0}{" "}
+                                            Sessions Done
+                                        </span>
+                                        <span>
+                                            {Math.round(
+                                                (record.therapistPlans
+                                                    ?.completedTherapySessions /
+                                                    record.therapistPlans
+                                                        ?.totalTherapySessions) *
+                                                    100,
+                                            ) || 0}
+                                            % Complete
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
                     {/* Title & Info Banner */}
                     <div className="space-y-4">
                         <div className="flex items-start gap-4">
@@ -277,99 +377,278 @@ export default function TherapistSessionDetail() {
                     </div>
 
                     {/* Main Content Grid */}
-                    <div className="grid lg:grid-cols-2 gap-6">
-                        {/* Symptoms */}
-                        <ContentCard
-                            icon={MessageSquare}
-                            title="Patient Symptoms"
-                            content={record.symptoms || "No symptoms provided"}
-                            iconColor="text-blue-400"
-                            gradient="from-blue-500/10 to-cyan-500/10"
-                            borderColor="border-blue-500/20"
-                        />
+                    <div className="grid lg:grid-cols-3 gap-6">
+                        {/* LEFT SIDE (2 COLUMNS) */}
+                        <div className="lg:col-span-2 space-y-6">
+                            {/* Symptoms */}
+                            <ContentCard
+                                icon={MessageSquare}
+                                title="Patient Symptoms"
+                                content={
+                                    record.symptoms || "No symptoms provided"
+                                }
+                                iconColor="text-blue-400"
+                                gradient="from-blue-500/10 to-cyan-500/10"
+                                borderColor="border-blue-500/20"
+                            />
 
-                        {/* Therapist Notes */}
-                        <Card
-                            className="group bg-gradient-to-br from-gray-800/50 to-gray-900/50 
+                            {/* Therapist Notes */}
+                            <Card
+                                className="group bg-gradient-to-br from-gray-800/50 to-gray-900/50 
                                        border border-gray-700/50 shadow-xl hover:shadow-2xl 
                                        hover:shadow-cyan-500/10 hover:border-cyan-500/30 
                                        transition-all duration-500 backdrop-blur-sm"
-                        >
-                            <CardHeader className="pb-3">
-                                <div className="flex items-center gap-3">
-                                    <div
-                                        className="p-2.5 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 
+                            >
+                                <CardHeader className="pb-3">
+                                    <div className="flex items-center gap-3">
+                                        <div
+                                            className="p-2.5 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 
                                                   rounded-xl border border-cyan-500/30 shadow-lg shadow-cyan-500/10
                                                   group-hover:scale-110 transition-transform duration-300"
-                                    >
-                                        <FileText className="w-5 h-5 text-cyan-400" />
+                                        >
+                                            <FileText className="w-5 h-5 text-cyan-400" />
+                                        </div>
+                                        <CardTitle className="text-white text-lg font-semibold">
+                                            Therapist Notes
+                                        </CardTitle>
                                     </div>
-                                    <CardTitle className="text-white text-lg font-semibold">
-                                        Therapist Notes
-                                    </CardTitle>
-                                </div>
-                            </CardHeader>
-                            <CardContent>
-                                {isEditing ? (
-                                    <Textarea
-                                        value={editedData.therapistNotes}
-                                        onChange={(e) =>
-                                            setEditedData((prev) => ({
-                                                ...prev,
-                                                therapistNotes: e.target.value,
-                                            }))
-                                        }
-                                        placeholder="Add your session notes, observations, and recommendations..."
-                                        className="min-h-[140px] bg-gray-950/50 border-gray-700 
+                                </CardHeader>
+                                <CardContent>
+                                    {isEditing ? (
+                                        <Textarea
+                                            value={editedData.therapistNotes}
+                                            onChange={(e) =>
+                                                setEditedData((prev) => ({
+                                                    ...prev,
+                                                    therapistNotes:
+                                                        e.target.value,
+                                                }))
+                                            }
+                                            placeholder="Add your session notes, observations, and recommendations..."
+                                            className="min-h-[140px] bg-gray-950/50 border-gray-700 
                                                  text-gray-200 placeholder:text-gray-500 
                                                  focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20
                                                  transition-all duration-300 resize-none"
-                                    />
-                                ) : (
-                                    <div
-                                        className="min-h-[140px] p-4 bg-gradient-to-br from-gray-950/70 to-gray-900/70 
+                                        />
+                                    ) : (
+                                        <div
+                                            className="min-h-[140px] p-4 bg-gradient-to-br from-gray-950/70 to-gray-900/70 
                                                   rounded-lg border border-gray-700/50 
                                                   hover:border-gray-600 transition-colors duration-300"
-                                    >
-                                        <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">
-                                            {record.therapistNotes || (
-                                                <span className="text-gray-500 italic flex items-center gap-2">
-                                                    <FileText className="w-4 h-4" />
-                                                    No notes added yet
+                                        >
+                                            <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">
+                                                {record.therapistPlans
+                                                    ?.therapistNotes || ( // Change here
+                                                    <span className="text-gray-500 italic flex items-center gap-2">
+                                                        <FileText className="w-4 h-4" />
+                                                        No notes added yet
+                                                    </span>
+                                                )}
+                                            </p>
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+
+                            {/* Treatment */}
+                            <ContentCard
+                                icon={Stethoscope}
+                                title="Prescribed Treatment"
+                                content={
+                                    record.prescribedTreatment ||
+                                    "No treatment prescribed"
+                                }
+                                iconColor="text-emerald-400"
+                                gradient="from-emerald-500/10 to-green-500/10"
+                                borderColor="border-emerald-500/20"
+                            />
+
+                            {/* Medications */}
+                            <ContentCard
+                                icon={Pill}
+                                title="Medications"
+                                content={
+                                    record.medications ||
+                                    "No medications prescribed"
+                                }
+                                iconColor="text-pink-400"
+                                gradient="from-pink-500/10 to-rose-500/10"
+                                borderColor="border-pink-500/20"
+                            />
+                        </div>
+
+                        {/* RIGHT SIDE (TIMELINE - 1 COLUMN) */}
+                        <div className="space-y-6">
+                            <Card className="bg-gray-900 border-gray-800 h-full">
+                                <CardHeader className="border-b border-gray-800 pb-4">
+                                    <CardTitle className="text-white text-lg flex items-center gap-2">
+                                        <Calendar className="w-5 h-5 text-indigo-400" />
+                                        Session History
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="pt-6">
+                                    <div className="space-y-6 relative before:absolute before:inset-0 before:ml-5 before:h-full before:w-0.5 before:bg-gray-800">
+                                        {sessions.length === 0 ? (
+                                            <p className="text-gray-500 text-sm text-center py-10 italic">
+                                                No scheduled sessions found.
+                                            </p>
+                                        ) : (
+                                            sessions.map((session) => (
+                                                <div
+                                                    key={session.sessionId}
+                                                    className="relative pl-10"
+                                                >
+                                                    <div
+                                                        className={`absolute left-4 top-1.5 h-3 w-3 rounded-full border-2 border-gray-950 ${session.status === "COMPLETED" ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-indigo-500 animate-pulse"}`}
+                                                    />
+                                                    <div className="p-3 bg-gray-950 border border-gray-800 rounded-xl hover:border-indigo-500/30 transition-all group">
+                                                        <div className="flex justify-between items-start">
+                                                            <div>
+                                                                <p className="text-white font-bold text-sm">
+                                                                    {new Date(
+                                                                        session.sessionDate,
+                                                                    ).toLocaleDateString(
+                                                                        "en-IN",
+                                                                        {
+                                                                            day: "numeric",
+                                                                            month: "short",
+                                                                        },
+                                                                    )}
+                                                                </p>
+                                                                <p className="text-gray-500 text-[10px] uppercase font-bold tracking-tighter">
+                                                                    {session.startTime.substring(
+                                                                        0,
+                                                                        5,
+                                                                    )}{" "}
+                                                                    -{" "}
+                                                                    {session.endTime.substring(
+                                                                        0,
+                                                                        5,
+                                                                    )}
+                                                                </p>
+                                                            </div>
+                                                            {session.status ===
+                                                            "COMPLETED" ? (
+                                                                <CheckCircle className="text-emerald-500 w-4 h-4" />
+                                                            ) : (
+                                                                <Button
+                                                                    onClick={() =>
+                                                                        markAsComplete(
+                                                                            session.sessionId,
+                                                                        )
+                                                                    }
+                                                                    className="h-6 text-[9px] bg-gray-800 hover:bg-emerald-600 text-gray-300 hover:text-white px-2"
+                                                                >
+                                                                    Mark Done
+                                                                </Button>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    </div>
+                    {/* Session Limit Configuration - Simple Tick Style */}
+                    {isEditing && (
+                        <div className="mt-8 space-y-4 animate-in fade-in slide-in-from-top-2 duration-500">
+                            <div className="flex items-center gap-2 px-1">
+                                <div className="h-6 w-1 bg-indigo-500 rounded-full" />
+                                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                                    <ListChecks className="w-4 h-4 text-indigo-400" />
+                                    Prescribe Session Count
+                                </h3>
+                            </div>
+
+                            <Card className="bg-gray-900/50 border-gray-800 shadow-xl overflow-hidden">
+                                <CardContent className="p-6">
+                                    <div className="flex flex-wrap justify-center gap-3">
+                                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(
+                                            (num) => (
+                                                <button
+                                                    key={num}
+                                                    type="button"
+                                                    onClick={() =>
+                                                        setEditedData({
+                                                            ...editedData,
+                                                            totalTherapySessions:
+                                                                num,
+                                                        })
+                                                    }
+                                                    className={`
+                                relative h-14 w-14 rounded-2xl border-2 font-bold text-lg transition-all duration-300
+                                flex items-center justify-center
+                                ${
+                                    editedData.totalTherapySessions === num
+                                        ? "bg-indigo-600 border-indigo-400 text-white scale-110 shadow-lg shadow-indigo-500/20"
+                                        : "bg-gray-950 border-gray-800 text-gray-500 hover:border-gray-700 hover:text-gray-300"
+                                }
+                            `}
+                                                >
+                                                    {num}
+
+                                                    {/* Tick Icon when selected */}
+                                                    {editedData.totalTherapySessions ===
+                                                        num && (
+                                                        <div className="absolute -top-2 -right-2 bg-emerald-500 rounded-full p-0.5 border-2 border-gray-950 animate-in zoom-in duration-300">
+                                                            <CheckCircle2 className="h-3 w-3 text-white" />
+                                                        </div>
+                                                    )}
+                                                </button>
+                                            ),
+                                        )}
+
+                                        {/* Manual Override if needed more than 10 */}
+                                        <div className="flex items-center ml-2 border-l border-gray-800 pl-5">
+                                            <div className="flex flex-col gap-1">
+                                                <span className="text-[10px] text-gray-500 font-bold uppercase">
+                                                    Other:
                                                 </span>
-                                            )}
+                                                <input
+                                                    type="number"
+                                                    placeholder="+"
+                                                    value={
+                                                        editedData.totalTherapySessions >
+                                                        10
+                                                            ? editedData.totalTherapySessions
+                                                            : ""
+                                                    }
+                                                    onChange={(e) =>
+                                                        setEditedData({
+                                                            ...editedData,
+                                                            totalTherapySessions:
+                                                                parseInt(
+                                                                    e.target
+                                                                        .value,
+                                                                ) || 0,
+                                                        })
+                                                    }
+                                                    className="w-12 bg-gray-950 border border-gray-800 rounded-lg py-2 text-center text-indigo-400 text-sm focus:border-indigo-500 outline-none"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-6 flex justify-center">
+                                        <p className="text-[11px] text-indigo-300/50 flex items-center gap-2 bg-indigo-500/5 px-4 py-1.5 rounded-full border border-indigo-500/10">
+                                            <Sparkles className="h-3 w-3" />
+                                            Patient will be allowed to book
+                                            exactly{" "}
+                                            <span className="text-indigo-400 font-bold underline">
+                                                {
+                                                    editedData.totalTherapySessions
+                                                }
+                                            </span>{" "}
+                                            sessions.
                                         </p>
                                     </div>
-                                )}
-                            </CardContent>
-                        </Card>
-
-                        {/* Treatment */}
-                        <ContentCard
-                            icon={Stethoscope}
-                            title="Prescribed Treatment"
-                            content={
-                                record.prescribedTreatment ||
-                                "No treatment prescribed"
-                            }
-                            iconColor="text-emerald-400"
-                            gradient="from-emerald-500/10 to-green-500/10"
-                            borderColor="border-emerald-500/20"
-                        />
-
-                        {/* Medications */}
-                        <ContentCard
-                            icon={Pill}
-                            title="Medications"
-                            content={
-                                record.medications ||
-                                "No medications prescribed"
-                            }
-                            iconColor="text-pink-400"
-                            gradient="from-pink-500/10 to-rose-500/10"
-                            borderColor="border-pink-500/20"
-                        />
-                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    )}
 
                     {/* Therapy Configuration */}
                     <Card
@@ -389,7 +668,7 @@ export default function TherapistSessionDetail() {
                                         <Brain className="w-6 h-6 text-cyan-400" />
                                     </div>
                                     <CardTitle className="text-white text-xl font-semibold">
-                                        Therapy Plan
+                                        Assign Therapy
                                     </CardTitle>
                                 </div>
                                 {isEditing ? (
@@ -509,16 +788,16 @@ export default function TherapistSessionDetail() {
                                         </div>
                                     ) : (
                                         <div className="flex flex-wrap gap-2">
-                                            {record.therapies?.length > 0 ? (
-                                                record.therapies.map(
-                                                    (therapy) => (
+                                            {record.therapistPlans?.therapies
+                                                ?.length > 0 ? ( // Change here
+                                                record.therapistPlans.therapies.map(
+                                                    (
+                                                        therapy, // Change here
+                                                    ) => (
                                                         <Badge
                                                             key={therapy}
                                                             className="px-4 py-2 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 
-                                                                 text-cyan-300 border border-cyan-500/30 
-                                                                 shadow-lg shadow-cyan-500/10 font-medium
-                                                                 hover:shadow-cyan-500/20 hover:-translate-y-0.5
-                                                                 transition-all duration-300"
+                        text-cyan-300 border border-cyan-500/30 font-medium"
                                                         >
                                                             {therapy.replace(
                                                                 /_/g,
