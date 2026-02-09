@@ -337,7 +337,6 @@ export default function TherapistSchedule() {
 
             setAllSlots(res.data || []);
 
-            // STEP 2: re-filter for selected date
             const filtered = res.data.filter(
                 (slot) => slot.slotDate === selectedDate,
             );

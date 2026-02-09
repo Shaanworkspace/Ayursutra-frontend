@@ -2,6 +2,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { PatientLayout } from "../components/PatientLayout";
 import { Loader2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+
 import {
     User,
     Phone,
@@ -36,6 +38,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 const BookAppointment = () => {
     const [specializations, setSpecializations] = useState([]);
     const [availabilities, setAvailabilities] = useState([]);
+    const navigate = useNavigate();
 
     const gateway = import.meta.env.VITE_API_GATEWAY_BASE_URL;
     const reduxUser = useSelector((state) => state.auth.userResponse);
@@ -193,6 +196,10 @@ const BookAppointment = () => {
                 },
             );
             toast.success("Booked Appointment !!!");
+
+            setTimeout(() => {
+                navigate("/patient/appointments");
+            }, 2000);
         } catch (error) {
             toast.error("Failed to book appointment");
             console.error(error);

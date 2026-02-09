@@ -16,7 +16,7 @@ import {
     Plus,
     Loader2,
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { PatientLayout } from "./components/PatientLayout";
 import { useDispatch, useSelector } from "react-redux";
@@ -69,6 +69,20 @@ export default function PatientDashboard() {
         return new Date(r.visitDate) < today;
     }).length;
 
+    const activeSessions = medicalRecords.filter(
+        (r) => r.sessionMedicalRecordStatus !== "COMPLETED",
+    );
+
+    const completedHistory = medicalRecords.filter(
+        (r) => r.sessionMedicalRecordStatus === "COMPLETED",
+    );
+
+    const sortedActive = [...activeSessions].sort(
+        (a, b) => new Date(b.updatedDateTime) - new Date(a.updatedDateTime),
+    );
+    const sortedCompleted = [...completedHistory].sort(
+        (a, b) => new Date(b.updatedDateTime) - new Date(a.updatedDateTime),
+    );
     const healthReports = medicalRecords.length;
 
     const calculateWellnessScore = () => {
@@ -288,61 +302,62 @@ export default function PatientDashboard() {
                     <div className="grid lg:grid-cols-3 gap-8">
                         {/* LEFT */}
                         <div className="lg:col-span-2 space-y-6">
-                            {/* Appointments */}
-                            <Card title="Appointments">
+                            <Card title="Active Appointments & Therapy">
                                 {loadingRecords ? (
                                     <div className="space-y-3">
-                                        <AppointmentSkeleton />
-                                        <AppointmentSkeleton />
                                         <AppointmentSkeleton />
                                     </div>
                                 ) : (
                                     <>
-                                        {visibleAppointments.length === 0 && (
-                                            <p className="text-sm text-gray-400 text-center py-8">
-                                                No appointments found
+                                        {sortedActive.length === 0 ? (
+                                            <p className="text-sm text-gray-400 text-center py-8 border border-dashed border-gray-800 rounded-xl">
+                                                No active sessions at the moment
                                             </p>
-                                        )}
-
-                                        <div
-                                            className={
-                                                showAllAppointments
-                                                    ? "max-h-[420px] overflow-y-auto space-y-2 pr-2"
-                                                    : "space-y-2"
-                                            }
-                                        >
-                                            {visibleAppointments.map(
-                                                (record) => (
+                                        ) : (
+                                            <div className="space-y-2">
+                                                {sortedActive.map((record) => (
                                                     <PatientAppointmentRow
                                                         key={
                                                             record.medicalRecordId
                                                         }
                                                         record={record}
                                                     />
-                                                ),
-                                            )}
-                                        </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+                            </Card>
 
-                                        {sortedAppointments.length > 3 && (
-                                            <button
-                                                onClick={() =>
-                                                    setShowAllAppointments(
-                                                        (prev) => !prev,
-                                                    )
-                                                }
-                                                className="flex justify-center items-center gap-2 text-sm text-cyan-400 hover:underline mt-4 w-full"
-                                            >
-                                                {showAllAppointments
-                                                    ? "Show Less"
-                                                    : "View All"}
-                                                <ArrowRight
-                                                    className={`w-4 h-4 transition-transform ${
-                                                        showAllAppointments
-                                                            ? "rotate-90"
-                                                            : ""
-                                                    }`}
-                                                />
-                                            </button>
+                            {/* COMPLETED SESSIONS BLOCK */}
+                            <Card title="Completed Sessions History">
+                                {loadingRecords ? (
+                                    <div className="space-y-3">
+                                        <AppointmentSkeleton />
+                                    </div>
+                                ) : (
+                                    <>
+                                        {sortedCompleted.length === 0 ? (
+                                            <p className="text-sm text-gray-400 text-center py-8">
+                                                No completed history
+                                            </p>
+                                        ) : (
+                                            <div className="max-h-[300px] overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+                                                {sortedCompleted.map(
+                                                    (record) => (
+                                                        <div
+                                                            key={
+                                                                record.medicalRecordId
+                                                            }
+                                                            className="opacity-75 grayscale-[0.5] hover:grayscale-0 transition-all"
+                                                        >
+                                                            <PatientAppointmentRow
+                                                                record={record}
+                                                            />
+                                                        </div>
+                                                    ),
+                                                )}
+                                            </div>
                                         )}
                                     </>
                                 )}
@@ -368,6 +383,7 @@ export default function PatientDashboard() {
                             {/* Quick Actions */}
                             <Card title="Quick Actions">
                                 <QuickAction
+                                    to={`/patient/appointments`}
                                     icon={Calendar}
                                     label="Appointments"
                                 />
@@ -502,12 +518,18 @@ const WellnessItem = ({ icon: Icon, title, desc }) => (
     </div>
 );
 
-const QuickAction = ({ icon: Icon, label }) => (
-    <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-800/60 border border-gray-700 hover:bg-gray-800 transition cursor-pointer">
-        <Icon className="w-5 h-5 text-cyan-400" />
-        <span className="text-sm">{label}</span>
-    </div>
-);
+const QuickAction = ({ to, icon: Icon, label }) => {
+    const navigate = useNavigate();
+    return (
+        <div
+            onClick={() => navigate(to)}
+            className="flex items-center gap-3 p-3 rounded-xl bg-gray-800/60 border border-gray-700 hover:bg-gray-800 transition cursor-pointer"
+        >
+            <Icon className="w-5 h-5 text-cyan-400" />
+            <span className="text-sm">{label}</span>
+        </div>
+    );
+};
 
 const ActivityItem = ({ icon: Icon, text }) => (
     <div className="flex items-center gap-3 p-3 hover:bg-gray-800 rounded-lg transition">
