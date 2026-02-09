@@ -26,6 +26,7 @@ export default function LoginPage() {
     const dispatch = useDispatch();
     const baseApi = import.meta.env.VITE_API_GATEWAY_BASE_URL;
     const baseGithubApi = import.meta.env.VITE_API_GATEWAY_GITHUB_URL;
+    const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
     useEffect(() => {
         const handleMessage = (event) => {
@@ -93,6 +94,7 @@ export default function LoginPage() {
     useEffect(() => {
         warmupAllServices();
     }, []);
+
     const handleLogin = async () => {
         if (isProcessing) return;
         warmupAllServices();
@@ -155,6 +157,17 @@ export default function LoginPage() {
         setTimeout(() => {
             setIsGithubLoading(false);
             setGithubStatusText("");
+        }, 10000);
+    };
+
+    const handleGoogleLogin = async () => {
+        if (!selectedRole || isGoogleLoading) return;
+
+        setIsGoogleLoading(true);
+        const oauthUrl = `${baseGithubApi}/api/user/oauth2/start/google?role=${selectedRole}`;
+        window.open(oauthUrl, "googleLogin", "width=600,height=700");
+        setTimeout(() => {
+            setIsGoogleLoading(false);
         }, 10000);
     };
 
@@ -330,6 +343,42 @@ export default function LoginPage() {
                             </>
                         )}
                     </button>
+
+                    <button
+                        onClick={handleGoogleLogin}
+                        disabled={!selectedRole || isGoogleLoading}
+                        className={`w-full mt-3 flex items-center justify-center gap-2 py-2.5 rounded-xl
+    bg-white border border-gray-300 text-gray-700 font-semibold
+    transition-all duration-300
+    ${isGoogleLoading ? "opacity-70 cursor-not-allowed" : "hover:bg-gray-100"}`}
+                    >
+                        {isGoogleLoading ? (
+                            <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                            <>
+                                <svg className="w-5 h-5" viewBox="0 0 24 24">
+                                    <path
+                                        fill="#EA4335"
+                                        d="M5.266 9.765A7.077 7.077 0 0 1 12 4.909c1.69 0 3.218.6 4.418 1.582L19.91 3C17.782 1.145 15.055 0 12 0 7.27 0 3.198 2.698 1.24 6.65l4.026 3.115z"
+                                    />
+                                    <path
+                                        fill="#34A853"
+                                        d="M16.04 18.013c-1.09.593-2.325.914-3.64.914-2.827 0-5.242-1.896-6.135-4.481L2.24 17.56C4.198 21.502 8.27 24 12 24c3.055 0 5.782-1.145 7.91-3L16.04 18.013z"
+                                    />
+                                    <path
+                                        fill="#4285F4"
+                                        d="M19.91 21c2.128-1.855 3.59-4.582 3.59-8.455 0-.58-.053-1.145-.155-1.69H12v4.63h6.49c-.28 1.51-1.137 2.782-2.41 3.633L19.91 21z"
+                                    />
+                                    <path
+                                        fill="#FBBC05"
+                                        d="M5.266 14.235A7.077 7.077 0 0 1 4.909 12c0-.79.13-1.554.357-2.235L1.24 6.65A11.934 11.934 0 0 0 0 12c0 1.92.445 3.73 1.24 5.35l4.026-3.115z"
+                                    />
+                                </svg>
+                                <span>Login with Google</span>
+                            </>
+                        )}
+                    </button>
+
                     <button
                         onClick={handleGithubLogin}
                         disabled={!selectedRole || isGithubLoading}
