@@ -348,15 +348,29 @@ export default function LoginPage() {
                         onClick={handleGoogleLogin}
                         disabled={!selectedRole || isGoogleLoading}
                         className={`w-full mt-3 flex items-center justify-center gap-2 py-2.5 rounded-xl
-    bg-white border border-gray-300 text-gray-700 font-semibold
-    transition-all duration-300
-    ${isGoogleLoading ? "opacity-70 cursor-not-allowed" : "hover:bg-gray-100"}`}
+        bg-gray-800 border border-gray-700 text-gray-200 font-semibold
+        transition-all duration-300 ease-in-out
+        ${
+            isGoogleLoading
+                ? "opacity-70 cursor-not-allowed"
+                : "hover:bg-gray-700 hover:border-gray-600 hover:shadow-[0_0_15px_rgba(255,255,255,0.05)] active:scale-[0.98]"
+        }
+    `}
                     >
                         {isGoogleLoading ? (
-                            <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                            <>
+                                <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                                <span className="animate-pulse">
+                                    Redirecting to Google...
+                                </span>
+                            </>
                         ) : (
                             <>
-                                <svg className="w-5 h-5" viewBox="0 0 24 24">
+                                {/* Standard Google Multi-color Icon */}
+                                <svg
+                                    className="w-5 h-5 mr-1"
+                                    viewBox="0 0 24 24"
+                                >
                                     <path
                                         fill="#EA4335"
                                         d="M5.266 9.765A7.077 7.077 0 0 1 12 4.909c1.69 0 3.218.6 4.418 1.582L19.91 3C17.782 1.145 15.055 0 12 0 7.27 0 3.198 2.698 1.24 6.65l4.026 3.115z"
