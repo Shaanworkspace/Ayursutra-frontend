@@ -60,7 +60,7 @@ export default function Navbar() {
                             />
                         </div>
 
-                        <span className="text-2xl font-bold text-white">
+                        <span className="text-2xl font-bold transition-colors">
                             Ayursutra
                         </span>
                     </Link>
@@ -77,13 +77,13 @@ export default function Navbar() {
                             to="/home/therapists"
                             className="hover:text-cyan-600 transition-colors"
                         >
-                            Therapists
+                            Hospitals
                         </Link>
                         <Link
-                            to="/appointments"
+                            to="https://ors.gov.in/healthid/index.jsp?NICSecurityORS=695I-GWGL-CHQY-481B-3N07-C98I-5ZDA-I36X"
                             className="hover:text-cyan-600 transition-colors"
                         >
-                            Appointments
+                            Create ABHA (Health ID)
                         </Link>
 
                         {/* Theme Toggle */}

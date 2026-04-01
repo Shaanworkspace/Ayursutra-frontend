@@ -253,10 +253,10 @@ export default function PatientDashboard() {
                                 Good Day
                             </p>
                             <h1 className="text-3xl lg:text-4xl font-bold">
-                                Welcome back, {fname} 👋
+                                Welcome back, {fname} 🙏🏼
                             </h1>
                             <p className="text-gray-400 mt-2">
-                                Here is your health overview
+                                Good Morning, Hope you feel better today.
                             </p>
                         </div>
 

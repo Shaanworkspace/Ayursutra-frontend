@@ -27,7 +27,7 @@ export async function warmupSingleService({
             });
 
             dispatch(setServiceStatus({ service, status: "up" }));
-            toast.success(`${service.toUpperCase()} Service UP`);
+            toast.success(`${service.toUpperCase()} Micro-service UP`);
             return;
         } catch {
             await new Promise((r) => setTimeout(r, 180000));

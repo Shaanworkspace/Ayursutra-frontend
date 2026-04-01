@@ -81,14 +81,14 @@ export default function PatientFooter() {
                             Contact
                         </h4>
                         <ul className="space-y-3 text-sm">
-                            <ContactRow Icon={Phone} text="+1 (555) 123-4567" />
+                            <ContactRow Icon={Phone} text="+91-78XXXXXX89" />
                             <ContactRow
                                 Icon={Mail}
                                 text="support@ayursutra.com"
                             />
                             <ContactRow
                                 Icon={MapPin}
-                                text="Health City, Wellness Street"
+                                text="New Delhi, 110095"
                             />
                         </ul>
                     </div>

@@ -8,7 +8,6 @@ import { useNavigate } from "react-router";
 import { useDispatch } from "react-redux";
 import { setCredentials } from "@/Store/Slices/authSlice";
 
-import { warmupAllServices } from "@/utils/warmupAllServices";
 import ColdStartNotice from "@/components/common/ColdStartNotice";
 
 export default function LoginPage() {
@@ -91,13 +90,8 @@ export default function LoginPage() {
         };
     }, []);
 
-    useEffect(() => {
-        warmupAllServices();
-    }, []);
-
     const handleLogin = async () => {
         if (isProcessing) return;
-        warmupAllServices();
         setIsProcessing(true);
 
         const toastId = toast.info(
@@ -144,8 +138,18 @@ export default function LoginPage() {
         }
     };
 
-    const handleGithubLogin = async () => {
-        if (!selectedRole || isGithubLoading) return;
+	const checkRole = () => {
+		if (!selectedRole) {
+			toast.warning("Please Select a Role ");
+			return false;
+		} else {
+			return true;
+		}
+	}
+	const handleGithubLogin = async () => {
+		if (!checkRole() || isGithubLoading) {
+			return;
+		}
 
         setIsGithubLoading(true);
         setGithubStatusText("Redirecting to GitHub…");
@@ -161,7 +165,7 @@ export default function LoginPage() {
     };
 
     const handleGoogleLogin = async () => {
-        if (!selectedRole || isGoogleLoading) return;
+        if (!checkRole() || isGoogleLoading) return;
 
         setIsGoogleLoading(true);
         const oauthUrl = `${baseGithubApi}/api/user/oauth2/start/google?role=${selectedRole}`;
@@ -195,13 +199,13 @@ export default function LoginPage() {
             {/* LOGIN CARD */}
             <div className="w-full max-w-md bg-gray-900 rounded-3xl shadow-2xl p-8 text-gray-100">
                 <div className="text-center mb-6">
-                    <div className="w-12 h-12 mx-auto mb-3 flex items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 shadow-lg">
+                    {/* <div className="w-12 h-12 mx-auto mb-3 flex items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 shadow-lg">
                         <Lock className="w-6 h-6 text-white" />
-                    </div>
+                    </div> */}
                     <h1 className="text-2xl font-bold text-indigo-400">
                         Sign in
                     </h1>
-                    <p className="text-xs text-gray-500">Welcome back</p>
+                    {/* <p className="text-xs text-gray-500">Welcome back</p> */}
                 </div>
 
                 <div className="space-y-4">
@@ -247,7 +251,6 @@ export default function LoginPage() {
                         </div>
                     </div>
 
-                    {/*  Role Selector */}
                     {/* Role Selection Section */}
                     <div>
                         <label className="text-xs font-medium text-gray-400 mb-2 block">
@@ -322,7 +325,7 @@ export default function LoginPage() {
                     <button
                         onClick={handleLogin}
                         disabled={!canLogin}
-                        className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl
+                        className={`w-full flex items-center justify-center gap-2 py-2 rounded-xl
                             bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold shadow-lg transition
                             ${
                                 canLogin
@@ -346,8 +349,8 @@ export default function LoginPage() {
 
                     <button
                         onClick={handleGoogleLogin}
-                        disabled={!selectedRole || isGoogleLoading}
-                        className={`w-full mt-3 flex items-center justify-center gap-2 py-2.5 rounded-xl
+                        disabled={ isGoogleLoading}
+                        className={`w-full mt-3 flex items-center justify-center gap-2 py-2 rounded-xl
         bg-gray-800 border border-gray-700 text-gray-200 font-semibold
         transition-all duration-300 ease-in-out
         ${
@@ -395,10 +398,10 @@ export default function LoginPage() {
 
                     <button
                         onClick={handleGithubLogin}
-                        disabled={!selectedRole || isGithubLoading}
-                        className={`w-full mt-3 flex items-center justify-center gap-2 py-2.5 rounded-xl
+                        disabled={isGithubLoading}
+                        className={`w-full mt-3 flex items-center justify-center gap-2 py-2 rounded-xl
         bg-gray-800 border border-gray-700 text-gray-200 font-semibold
-        transition-all duration-300
+        transition-all duration-300 hover:shadow-2xs
         ${
             isGithubLoading
                 ? "opacity-70 cursor-not-allowed"

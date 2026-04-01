@@ -36,7 +36,7 @@ export default function HomePage() {
                         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-teal-200/30 dark:bg-teal-900/20 rounded-full blur-3xl" />
                     </div>
 
-                    <div className="container mx-auto px-6 py-20 md:py-28 relative z-10">
+                    <div className="container mx-auto px-6 py-25 md:py-28 relative z-10">
                         <div className="flex flex-col lg:flex-row items-center gap-12">
                             {/* Left Content */}
                             <div className="flex-1 text-center lg:text-left">
@@ -71,13 +71,7 @@ export default function HomePage() {
                                         </Button>
                                     </Link>
 
-                                    <Button
-                                        variant="outline"
-                                        size="lg"
-                                        className="border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-300"
-                                    >
-                                        Learn More
-                                    </Button>
+                                    
                                     <ColdStartNotice />
                                 </div>
 
@@ -152,8 +146,8 @@ export default function HomePage() {
                             {[
                                 { number: "15+", label: "Years Experience" },
                                 { number: "50+", label: "Expert Healers" },
-                                { number: "10K+", label: "Sessions Completed" },
-                                { number: "98%", label: "Client Satisfaction" },
+                                { number: "9.4K+", label: "Sessions Completed" },
+                                { number: "98.9%", label: "Client Satisfaction" },
                             ].map((stat) => (
                                 <div key={stat.label} className="text-center">
                                     <p className="text-3xl md:text-4xl font-bold text-cyan-600 dark:text-cyan-400 mb-1">
@@ -408,13 +402,7 @@ export default function HomePage() {
                                             <ArrowRight className="ml-2 h-5 w-5" />
                                         </Button>
                                     </Link>
-                                    <Button
-                                        size="lg"
-                                        variant="outline"
-                                        className="border-white text-white hover:bg-white/10"
-                                    >
-                                        Contact Us
-                                    </Button>
+                                    
                                 </div>
                             </div>
                         </div>
